@@ -1,0 +1,51 @@
+.breadcrumb-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  // margin-bottom: 15px;
+
+  .breadcrumb {
+    ol {
+      li {
+        a {
+          cursor: pointer;
+          color: #888;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+
+          &:hover {
+            text-decoration: none;
+            color: #121212;
+          }
+        }
+
+        &:last-child {
+          a {
+            pointer-events: none;
+            color: #121212;
+          }
+        }
+
+        .navigator {
+          color: #888;
+        }
+      }
+    }
+    .MuiBreadcrumbs-separator {
+      margin: 0;
+    }
+  }
+
+  .button-list-wrapper {
+    button {
+      text-transform: inherit;
+    }
+  }
+
+  .page-title {
+    margin: 0;
+    font-weight: 600;
+    font-family: "Rubik";
+    color: #888;
+  }
+}

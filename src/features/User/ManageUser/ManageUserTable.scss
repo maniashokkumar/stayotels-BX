@@ -1,0 +1,11 @@
+@import "../../../assets//scss//theme-vars.module.scss";
+
+.manage-user-table {
+  position: relative;
+
+  .isActive {
+    &.activeUser {
+      color: $successMain;
+    }
+  }
+}

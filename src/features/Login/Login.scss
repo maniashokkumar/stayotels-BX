@@ -1,0 +1,159 @@
+@import "../../assets//scss//theme-vars.module.scss";
+
+.login-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  @media (min-width: 900px) {
+    flex-direction: row;
+  }
+
+  .title {
+    font-family: "Rubik", sans-serif;
+  }
+
+  .login-aside {
+    // background-image: url("../../assets//images//bg.png");
+    background-repeat: no-repeat;
+    background-size: cover;
+    width: 100%;
+    height: 100% !important;
+    background-color: #2b60e0;
+    color: white;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+
+    @media (min-width: 900px) {
+      max-width: 600px;
+    }
+
+    @media (max-width: 600px) {
+      width: 100%;
+      height: 90% !important;
+    }
+
+    @media (max-width: 500px) {
+      width: 100%;
+      height: 85% !important;
+    }
+
+    @media (max-width: 400px) {
+      width: 100%;
+      height: 80% !important;
+    }
+
+    @media (max-width: 300px) {
+      width: 100%;
+      height: 70% !important;
+    }
+
+    .content {
+      text-align: center;
+      padding: 20px;
+  
+      .title {
+          font-size: 28px;
+          margin-bottom: 10px;
+  
+          @media (max-width: 600px) {
+              font-size: 22px;
+          }
+      }
+  
+      .image-wrapper {
+          display: flex;
+          justify-content: center;
+          margin: 10px 0;
+  
+          .booking-icon {
+              width: 90%; /* Set a proper size for desktop */
+             
+              
+              @media (max-width: 600px) {
+                  width: 100%; /* Smaller size for mobile */
+              }
+          }
+      }
+  
+      .text {
+          font-size: 16px;
+          line-height: 1.5;
+          
+          @media (max-width: 600px) {
+              font-size: 14px;
+              margin-bottom: 10px;
+          }
+      }
+  }
+  
+  }
+
+  .copy-right-block {
+    margin: 0;
+    text-align: center;
+  }
+
+  .login-form-wrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .title {
+      font-size: 1.4rem;
+    }
+
+    .forgot-password-block {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .signup-block {
+      p {
+        margin: 20px 0 0 0;
+      }
+    }
+  }
+}
+
+.login-card {
+  padding: 30px;
+  height: auto;
+  margin: 30px;
+  text-align: center;
+  width: 100%;
+
+  @media (min-width: 600px) {
+    min-width: 480px;
+    width: auto;
+  }
+
+  .title {
+    margin-bottom: 20px;
+    display: inline-block;
+  }
+
+  .submit-button {
+    margin-top: 10px;
+    text-transform: inherit;
+  }
+}
+
+.login-aside{
+  width: 100%;
+  height: 100%;
+}
+
+
+
+
+// @media (max-width: 400px) {
+//   .login-aside {
+//       background-image: url('../../assets/images/bg.png') !important;
+//       background-size: cover !important;
+//       background-position: center !important;
+//   }
+// }
+

@@ -1,0 +1,90 @@
+@import "../../assets//scss//theme-vars.module.scss";
+/* mui-table css -ends- */
+.mui-table {
+  &.compact {
+    th {
+      padding: 10px 20px;
+      font-family:"Rubik";
+    }
+
+    td {
+      padding: 5px 20px;
+      font-family:"Rubik";
+      font-weight: 600;
+    }
+  }
+
+  th {
+    border-radius: 4px;
+    font-family:"Rubik";
+    font-weight: 600;
+
+    .MuiButton-root {
+      color: $darkTextPrimary;
+      font-family:"Rubik";
+      font-weight: 600;
+    }
+  }
+
+  .MuiToolbar-root {
+    padding-right: 15px;
+    padding-left: 15px;
+    font-family:"Rubik";
+  }
+}
+
+.filter-chip-wrapper {
+  display: flex;
+  padding: 0 10px;
+  font-family: "Rubik";
+      font-weight: 600;
+
+  .filter-chip {
+    margin-right: 10px;
+    padding: 2px 4px 2px 6px;
+    background: #efeff6;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    min-width: 80px;
+    align-items: center;
+    line-height: 1.4;
+    font-family: "Rubik";
+      font-weight: 600;
+
+    .column-label {
+      font-size: 0.675rem;
+      font-family: "Rubik";
+      font-weight: 600;
+    }
+    .column-value {
+      font-size: 1rem;
+      font-family: "Rubik";
+      font-weight: 600;
+    }
+
+    .close-icon {
+      padding: 2px;
+      opacity: 0.6;
+      margin-left: 8px;
+
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+
+    .close-icon svg {
+      font-size: 18px;
+    }
+  }
+}
+
+.custom-filter-dialog-footer-wrapper {
+  button {
+    margin-right: 15px;
+  }
+}
+
+// .MuiPaper-root {
+//   box-shadow: none !important;
+// }

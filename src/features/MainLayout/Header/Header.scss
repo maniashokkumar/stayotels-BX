@@ -1,0 +1,140 @@
+@import "../../../assets//scss//theme-vars.module.scss";
+
+.header-wrapper {
+  #headerPanelDropdown {
+  }
+  .panel-dropdown-section {
+    .auto-complete-wrapper {
+      width: 100%;
+      min-width: 120px;
+      background: $background;
+      margin-left: 10px;
+      @media (min-width: 380px) {
+        width: 180px;
+      }
+      @media (min-width: 600px) {
+        width: 240px;
+      }
+
+      fieldset {
+        border: none;
+      }
+    }
+  }
+
+  .right-side-section {
+    .font-icons {
+      color: #b3b0b0;
+      font-size: 1.5rem;
+
+      &.user-icon {
+        font-size: 1.6rem;
+      }
+
+      &.user-icon svg {
+        background: #e7e7e7;
+        border-radius: 10px;
+      }
+    }
+  }
+
+  .notification-section {
+    .svg-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 20px;
+      width: 20px;
+      .notifiction-icon {
+        fill: #6d6d6d;
+      }
+    }
+
+    .count {
+      position: absolute;
+      top: -1px;
+      left: 18px;
+      background: #4374f4;
+      color: #fff;
+      width: 22px;
+      height: 22px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: solid 1px #fff;
+    }
+  }
+}
+
+#language-section-popover {
+  .language-card {
+    min-width: 150px;
+  }
+}
+.logo-section {
+  display: flex;
+  align-items: center;
+}
+
+#profile-popover .profile-card {
+  // padding : 15px;
+  width: 100%;
+  max-width: 350px;
+  min-width: 300px;
+
+  .card-header {
+    padding: 15px 15px 10px;
+    color: $darkTextPrimary;
+  }
+  .card-body {
+    .MuiList-root {
+      padding: 0;
+    }
+    .MuiListItemButton-root {
+      padding: 10px;
+    }
+    .MuiListItemIcon-root {
+      font-size: 1.2rem;
+      min-width: auto;
+      margin-right: 15px;
+    }
+  }
+  .user-name {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .role-name {
+    margin: 0;
+    font-size: 0.775rem;
+    color: $grey700;
+  }
+}
+
+#language-popover .language-card {
+  min-width: 130px;
+
+  .card-header {
+    padding: 10px 15px;
+
+    .title {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+  }
+  .card-body {
+    .MuiList-root {
+      padding: 0;
+    }
+    .MuiListItemButton-root {
+      padding: 5px 15px;
+    }
+  }
+}
+
+// .MuiPaper-root{
+//   width: 45%;
+// }

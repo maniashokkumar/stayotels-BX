@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300&display=swap');
+@import "../../assets//scss//theme-vars.module.scss";
+
+html,
+body,
+#root,
+.App {
+  height: 100%;
+}
+
+body {
+  background: $background !important;
+  margin: 0;
+  font-family: "Rubik", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 0.875rem; // 14px
+}
+
+.page {
+  padding: 20px;
+  position: relative;
+}
+
+p {
+  margin: 0;
+}
+
+.app-logo {
+  width: 190px;
+}
+
+.hide {
+  display: none;
+}
+
+.form-card {
+  .form-field {
+    width: 100%;
+    margin-bottom: 20px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .link {
+    color: $primaryMain;
+    cursor: pointer;
+    font-weight: 500;
+  }
+}
+
+/* Scroll bar css */
+
+::-webkit-scrollbar{
+  width: 8px;
+}
+
+::-webkit-scrollbar-track{
+  background-color: #fff;
+}
+::-webkit-scrollbar-thumb{
+  background-color: lightgray;
+  border-radius: 50px;
+}
+
+/* COMMON CSS -starts- */
+.card-wrapper-default {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  height: 100%;
+  position: relative;
+
+  .card-title-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .title {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 600;
+    font-family: "Rubik", sans-serif;
+  }
+}
+
+.small-card-wrapper-default {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  height: 100%;
+  position: relative;
+
+  .card-title-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .title {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 600;
+    font-family: "Rubik", sans-serif;
+  }
+}
+
+.title-header {
+  margin-bottom: 15px;
+  font-size: 1rem;
+  color: rgb(18, 25, 38);
+  font-weight: 600;
+}
+
+/* - resets - */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+}
+
+/* COMMON CSS -ends- */
+
+/* ICONS */
+
+.svg-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+}
+.icons,
+.svg-icon-wrapper svg {
+  display: inline-block;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+
+
+  &.location {
+    background-image: url("../../assets/icons/location.svg");
+  }
+
+  &.hotel {
+    background-image: url("../../assets/icons/hotel.svg");
+  }
+
+  &.amenities {
+    background-image: url("../../assets/icons/amenities.svg");
+  }
+
+  &.price {
+    background-image: url("../../assets/icons/price.svg");
+  }
+
+  &.rooms {
+    background-image: url("../../assets/icons/rooms.svg");
+  }
+
+  &.users {
+    background-image: url("../../assets/icons/users.svg");
+  }
+
+  &.reservation {
+    background-image: url("../../assets/icons/reserve 1.svg");
+  }
+
+  &.calendar {
+    background-image: url("../../assets/icons/calendar.svg");
+  } 
+}
+
+/* energyCard css -starts- */
+
+.energy-card {
+  .energy-icon,
+  .energy-icon-black {
+    width: 24px;
+    height: 41px;
+  }
+
+  .solar-icon {
+    width: 62px;
+    height: 62px;
+  }
+
+  .dollar-icon {
+    width: 42px;
+    height: 66px;
+  }
+}
+
+/* energyCard css -ends- */

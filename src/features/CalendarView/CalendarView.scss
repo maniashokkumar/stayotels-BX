@@ -1,0 +1,92 @@
+.calendar-page {
+  .form-card {
+      .form-fields-block {
+          display: flex;
+          flex-wrap: wrap;
+          margin-left: -15px;
+          margin-right: -15px;
+      }
+
+      .form-field {
+          width: 100%;
+          margin-bottom: 30px;
+          padding: 0 15px;
+
+          @media (min-width: 600px) {
+              width: 50%;
+          }
+      }
+  }
+}
+
+.fc-event {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.fc-daygrid-event {
+  .event-content {
+      font-size: 14px;
+      background-color: #4A90E2;
+      color: white;
+      padding: 5px;
+      border-radius: 4px;
+      line-height: 1.4;
+
+      .sold-out {
+          background-color: red;
+          border: 2px solid red;
+      }
+
+      .event-detail {
+          margin-bottom: 4px;
+      }
+
+  }
+
+  @media (max-width: 1600px) {
+         
+    .event-detail {
+        margin-bottom: 2px;
+        font-size: 16px;
+    }
+}
+
+  @media (max-width: 600px) {
+     
+      .event-detail {
+          margin-bottom: 2px;
+          font-size: 12px;
+      }
+  }
+
+  @media (max-width: 500px) {
+   
+
+    .event-detail {
+        margin-bottom: 2px;
+        font-size: 6px;
+       
+    }
+}
+
+  @media (max-width: 400px) {
+   
+
+    .event-detail {
+        margin-bottom: 2px;
+        font-size: 5px;
+       
+    }
+}
+
+@media (max-width: 300px) {
+   
+
+  .event-detail {
+      margin-bottom: 2px;
+      font-size: 5px;
+     
+  }
+}
+}

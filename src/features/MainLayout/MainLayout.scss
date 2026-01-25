@@ -1,0 +1,116 @@
+// color variants
+@import "../../assets//scss//theme-vars.module.scss";
+
+.main-section {
+  background-color: $secondaryCustomLight;
+  min-height: calc(100vh - 64px);
+  position: relative;
+}
+
+/* SIDE DRAWER css starts */
+.side-drawer-wrapper {
+  .menu-list {
+    .MuiListItemButton-root {
+      .icons {
+        width: 30px;
+        height: 30px;
+        margin-right: 5px;
+      }
+
+      &.Mui-selected {
+        .users {
+          background-image: url("../../assets/icons/users-image.svg");
+        }
+        .location {
+          background-image: url("../../assets/icons/location-white.svg");
+        }
+        .amenities {
+          background-image: url("../../assets/icons/amenities-white.svg");
+        }
+        .hotel{
+          background-image: url("../../assets/icons/hotel-image.svg");
+        }
+        .rooms{
+          background-image: url("../../assets/icons/rooms-image.svg");
+        }
+        .price {
+          background-image: url("../../assets/icons/price-white.svg");
+        }
+        .reservation {
+          background-image: url("../../assets/icons/reservation-white.svg");
+        }
+        .calendar {
+          background-image: url("../../assets/icons/calendar-white.svg");
+        }
+        
+      }
+    }
+  }
+}
+
+/* SIDE DRAWER css ends */
+
+.notification-card {
+  min-width: 300px;
+
+  .card-header {
+    background: $primaryMain;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    color: #fff;
+    padding-bottom: 0;
+
+    .lead {
+      margin: 0;
+      font-size: 1.1rem;
+      font-family: "Rubik", sans-serif;
+
+      .count {
+        font-size: 0.875rem;
+        margin-left: 10px;
+        font-family: "Rubik", sans-serif;
+      }
+    }
+
+    .tabLinks-wrapper {
+      margin-top: 10px;
+
+      .MuiTabs-root {
+        min-height: auto;
+      }
+
+      .MuiButtonBase-root {
+        color: #fff;
+        opacity: 0.75;
+        min-height: auto;
+        min-width: auto;
+        padding: 15px 5px 12px;
+        margin-right: 15px;
+        text-transform: inherit;
+        font-weight: normal;
+
+        &.Mui-selected {
+          opacity: 1;
+          font-weight: 500;
+        }
+      }
+      .MuiTabs-indicator {
+        background-color: #fff;
+      }
+    }
+  }
+  .tab-panel {
+    .item {
+      cursor: pointer;
+      margin: 0;
+      padding: 15px 20px;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      border-bottom: solid 1px #e7e7e7;
+
+      &:hover {
+        background: rgba(67, 116, 244, 0.1);
+      }
+    }
+  }
+}

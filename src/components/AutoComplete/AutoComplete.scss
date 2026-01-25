@@ -1,0 +1,45 @@
+@import "../../assets//scss//theme-vars.module.scss";
+
+.auto-complete-wrapper {
+  border-radius: 4px;
+  font-size: 0.875rem; // 14px
+
+  &.hideCloseIcon {
+    &.MuiAutocomplete-hasPopupIcon {
+      .MuiOutlinedInput-root {
+        padding-right: 40px;
+      }
+      .MuiAutocomplete-clearIndicator {
+        display: none;
+      }
+    }
+  }
+
+  .MuiOutlinedInput-input {
+    font-size: 0.875rem;
+  }
+
+  .MuiOutlinedInput-root {
+    padding: 0 4px;
+  }
+
+  .MuiAutocomplete-popupIndicator {
+    font-size: 1.4rem;
+  }
+}
+
+.MuiAutocomplete-popper {
+  .MuiPaper-root {
+    font-size: 0.875rem; // 14px
+  }
+
+  .MuiAutocomplete-listbox {
+    padding: 0;
+  }
+
+  .MuiAutocomplete-option[aria-selected="true"].Mui-focused,
+  .MuiAutocomplete-option.Mui-focused {
+    background: $primaryMain;
+    color: $white;
+  }
+}

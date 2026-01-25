@@ -1,0 +1,26 @@
+.alert-dialog {
+  .alert-dialog-title,
+  .MuiDialogContent-root {
+    padding: 10px 15px;
+  }
+
+  .MuiDialogContent-root {
+    padding: 0;
+  }
+
+  .alert-dialog-content-wrapper {
+    position: relative;
+
+    .content {
+      padding: 20px;
+    }
+  }
+
+  .alert-dialog-title {
+    border-bottom: solid 1px #ddd;
+  }
+
+  .MuiDialogContent-root {
+    min-width: 300px;
+  }
+}

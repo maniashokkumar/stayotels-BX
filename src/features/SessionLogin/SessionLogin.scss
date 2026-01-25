@@ -1,0 +1,22 @@
+@import "../../assets//scss//theme-vars.module.scss";
+
+.session-login-page {
+  min-width: 420px;
+
+  .title-block {
+    margin-top: 20px;
+    text-align: center;
+    color: $darkTextPrimary;
+    .time-icon {
+      font-size: 60px;
+    }
+    .title {
+      font-family: "Rubik", sans-serif;
+    }
+  }
+
+  .logout-block {
+    text-align: center;
+    margin-top: 20px;
+  }
+}

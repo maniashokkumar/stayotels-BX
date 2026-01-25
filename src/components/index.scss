@@ -1,0 +1,37 @@
+@import "../assets//scss//theme-vars.module.scss";
+
+/* Loader css -starts- */
+.noDataFound-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+}
+
+// .loader-wrapper {
+//   &.page-loader {
+//     position: absolute;
+//     z-index: 101;
+//     background: rgba(1, 1, 1, 0.3);
+//     align-items: baseline;
+//     padding-top: 80px;
+//   }
+// }
+
+/* Loader css -ends- */
+
+/* NoDataFound css -starts- */
+.noDataFound-wrapper {
+  .lead-noData {
+    margin: 0;
+  }
+}
+
+/* NoDataFound css -ends- */
+
+/* Tabs -starts- */
+
+/* Tabs -ends- */
