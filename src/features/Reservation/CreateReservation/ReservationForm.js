@@ -21,7 +21,7 @@ import {
   KeyBoardDatePicker,
   NumberComponent,
 } from "../../../components/ReactHookForm/index";
-import { Button } from "@mui/material";
+import { Button, InputAdornment } from "@mui/material";
 import "./CreateReservation.scss";
 
 function ReservationForm({ priceDetails, priceFormData }) {
@@ -75,7 +75,11 @@ function ReservationForm({ priceDetails, priceFormData }) {
     formData.noofRooms = priceFormData.noofRooms;
     formData.checkInDate = priceFormData.checkInDate;
     formData.checkOutDate = priceFormData.checkOutDate;
-    //  console.log("formData>>>>", formData);
+    const phone = formData.phoneNumber;
+    if (phone && !phone.startsWith("+91")) {
+      formData.phoneNumber = `+91${phone}`;
+    }
+
     let response = null;
     setOnSumbitLoader(true);
     response = await createReservation({ data: formData, dispatch });
@@ -151,11 +155,16 @@ function ReservationForm({ priceDetails, priceFormData }) {
             rules={{
               required: t("Phone Number is required"),
               pattern: {
-                value: /^\+91[6-9]\d{9}$/,
+                value: /^[6-9]\d{9}$/,
                 message: t(
-                  "Please enter a valid Indian mobile number with country code '+91'"
+                  "Please enter a valid 10-digit Indian mobile number"
                 ),
               },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">+91</InputAdornment>
+              ),
             }}
           />
         </div>

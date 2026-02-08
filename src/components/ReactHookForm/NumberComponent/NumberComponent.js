@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextField } from '@mui/material';
+import { TextField, InputAdornment } from '@mui/material';
 import { Controller } from "react-hook-form";
 import { makeStyles } from '@material-ui/core/styles';
 
@@ -13,7 +13,8 @@ const useStyles = makeStyles((theme) => ({
 
 function NumberComponent({
   id, label, control, rules, variant = "standard", fullWidth = true,
-  disabled, size, styles, handleCustomInputChange, required, message
+  disabled, size, styles, handleCustomInputChange, required, message,
+  InputProps = {}
 }) {
   const classes = useStyles();
   const isRequired = required;
@@ -23,16 +24,7 @@ function NumberComponent({
       <Controller
         name={id}
         control={control}
-        rules={{
-          ...rules,
-          validate: (value) => {
-            const trimmedValue = value.trim();
-            return (
-              /^\+91[6-9]\d{9}$/.test(trimmedValue) || 
-              "Please enter a valid Indian mobile number with country code '+91'"
-            );
-          },
-        }}
+        rules={rules} // Use passed-in rules directly
         render={({
           field: { onChange, value },
           fieldState: { error },
@@ -50,10 +42,14 @@ function NumberComponent({
               required: isRequired,
               className: classes.redAsterisk,
             }}
-            inputProps={{
-              pattern: "^\+91[6-9]\\d{9}$",
+            InputProps={InputProps} // Pass InputProps to TextField
+            onChange={(e) => {
+              const val = e.target.value.trim();
+              onChange(val);
+              if (handleCustomInputChange) {
+                handleCustomInputChange(val);
+              }
             }}
-            onChange={(e) => onChange(e.target.value.trim())}
             error={!!error}
             id={id}
             helperText={error ? error.message : message}
