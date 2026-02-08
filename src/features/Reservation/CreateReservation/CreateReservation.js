@@ -334,11 +334,12 @@ function CreateReservation() {
                   if (isNaN(value)) {
                     return "Please enter a valid number";
                   }
-                  if (parseFloat(value) <= 0) {
+                  const numericValue = parseFloat(value);
+                  if (numericValue <= 0) {
                     return "No of Persons must be greater than 0";
                   }
-                  if (parseFloat(value) === 0) {
-                    return "No of Rooms must not be 0";
+                  if (numericValue > 25) {
+                    return "The number of persons cannot exceed 25";
                   }
                   if (!/^\d{1,4}$/.test(value)) {
                     return "The No of Persons cannot be a decimal";

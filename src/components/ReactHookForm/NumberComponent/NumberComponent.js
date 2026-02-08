@@ -14,7 +14,7 @@ const useStyles = makeStyles((theme) => ({
 function NumberComponent({
   id, label, control, rules, variant = "standard", fullWidth = true,
   disabled, size, styles, handleCustomInputChange, required, message,
-  InputProps = {}
+  InputProps = {}, inputProps = {}
 }) {
   const classes = useStyles();
   const isRequired = required;
@@ -43,6 +43,7 @@ function NumberComponent({
               className: classes.redAsterisk,
             }}
             InputProps={InputProps} // Pass InputProps to TextField
+            inputProps={inputProps} // Pass inputProps to TextField
             onChange={(e) => {
               const val = e.target.value.trim();
               onChange(val);

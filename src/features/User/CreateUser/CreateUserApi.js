@@ -7,17 +7,17 @@ export const createUser = ({ data, dispatch }) => {
 
       let result = ""
       if (res.status === 200) {
-            // console.log("response : ",res.data);
-            if (res.data === "Success") {
-              result = res.data
-              return result
-            } else {
-              if(res.data==="already exists"){
-                res.data = "User Email ID or Phone Number already exists!";
-              }
-              dispatch(showSnackbar({ type: "error", message: res.data ? res.data : "Unable to create user" }));
-              return result
-            }
+        // console.log("response : ",res.data);
+        if (res.data === "Success") {
+          result = res.data
+          return result
+        } else {
+          if (res.data === "already exists") {
+            res.data = "User Email ID or Phone Number already exists!";
+          }
+          dispatch(showSnackbar({ type: "error", message: res.data ? res.data : "Unable to create user" }));
+          return result
+        }
       } else {
         dispatch(showSnackbar({ type: "error", message: res.data ? res.data : "Unable to create user" }));
         return result
@@ -54,7 +54,7 @@ export const updateUser = ({ data, userId, dispatch }) => {
 
 
 export const roleList = ({ id, data, dispatch }) => {
-  return axiosPrService.post(`/master/search/role?perPage=100`,{})
+  return axiosPrService.post(`/master/search/role?perPage=100`, {})
     .then(res => {
       // console.log("res dataaaaaa usecase:: " + res);
       if (res.data.status === 401) {
@@ -74,7 +74,7 @@ export const roleList = ({ id, data, dispatch }) => {
 export const hotelList = ({ data, dispatch }) => {
   return axiosPrService.post(`/master/search/hotels?perPage=200`, data)
     .then(res => {
-      console.log("data",res.data)
+      console.log("data", res.data)
       // console.log("res dataaaaaa usecase:: " + res);
       if (res.data.status === 401) {
         //handleUnauthorized(dispatch);

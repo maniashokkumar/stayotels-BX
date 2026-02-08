@@ -166,6 +166,9 @@ function ReservationForm({ priceDetails, priceFormData }) {
                 <InputAdornment position="start">+91</InputAdornment>
               ),
             }}
+            inputProps={{
+              maxLength: 10
+            }}
           />
         </div>
         <div style={{ display: "flex", justifyContent: "right" }}>

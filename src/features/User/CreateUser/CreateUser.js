@@ -12,10 +12,11 @@ import {
   CustomCheckbox,
   RadioButton,
   RadioButtonGroup,
+  NumberComponent,
 } from "../../../components/ReactHookForm/index";
-import { Button, Box, ListItem, FormControlLabel, Checkbox } from "@mui/material";
+import { Button, Box, ListItem, FormControlLabel, Checkbox, InputAdornment } from "@mui/material";
 import { fetchLookupList, showSnackbar } from "../../../redux/reducer/appSlice";
-import { updateTableState } from "../../User/ManageUser/manageUserTableSlice";
+import { updateTableState, fetchUserList } from "../../User/ManageUser/manageUserTableSlice";
 import { createUser, updateUser, roleList, hotelList } from "./CreateUserApi";
 
 import { FLOW_TYPE, TECHNICIAN_ROLE_ID } from "../../../Utils/constants";
@@ -62,6 +63,7 @@ function CreateUser() {
   const [hotels, setHotels] = useState([]);
   const [isAllHotels, setIsAllHotels] = useState(false);
   const [hotelLoader, setHotelLoader] = useState(false);
+  const [existingPhoneNumbers, setExistingPhoneNumbers] = useState([]);
   const onPageLoad = async () => {
     loc();
   };
@@ -72,6 +74,7 @@ function CreateUser() {
       dispatch(updateTableState({ userCreated: false }));
       onPageLoad();
       fetchHotels();
+      fetchAllUsers();
     }
     fetchInit();
     const roleDescription = window.localStorage.getItem("roleDescription");
@@ -92,6 +95,20 @@ function CreateUser() {
     }
     finally {
       setHotelLoader(false);
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      // Fetch users to check for duplicate phone numbers
+      // We pass a large perPage to get as many as possible for validation
+      const res = await dispatch(fetchUserList({ data: {}, params: { page: 0, perPage: 1000 } })).unwrap();
+      if (res && res.data) {
+        const phoneNumbers = res.data.map(user => user.phone).filter(Boolean);
+        setExistingPhoneNumbers(phoneNumbers);
+      }
+    } catch (error) {
+      console.error("Error fetching all users for validation:", error);
     }
   };
 
@@ -126,11 +143,16 @@ function CreateUser() {
         setValidation(false);
       }
 
+      let phoneVal = selectedUserData.phone;
+      if (phoneVal && phoneVal.startsWith("+91")) {
+        phoneVal = phoneVal.substring(3);
+      }
+
       const createUserForm = {
         userName: selectedUserData.userName,
         userEmail: selectedUserData.userEmail,
         roleId: selectedUserData.roleId,
-        phone: selectedUserData.phone,
+        phone: phoneVal,
         myCheckbox: temp,
       };
       reset(createUserForm);
@@ -150,7 +172,11 @@ function CreateUser() {
 
   const submitHandler = async (formData) => {
     try {
-    
+
+      if (formData.phone && !formData.phone.startsWith("+91")) {
+        formData.phone = `+91${formData.phone}`;
+      }
+
       if (formData.userEmail.length === 0) {
         if (formData.phone.length === 13) {
           formData.userEmail = formData.phone.substring(3, 13);
@@ -329,20 +355,36 @@ function CreateUser() {
               }
             />
 
-            <InputField
+            <NumberComponent
               id="phone"
               label={t("Mobile")}
               control={control}
-              readOnly={flow === FLOW_TYPE.EDIT ? true : false}
+              disabled={flow === FLOW_TYPE.EDIT ? true : false}
               variant="outlined"
               rules={{
                 required: t("Mobile Number is required"),
                 pattern: {
-                  value: /^\+91[6-9]\d{9}$/,
+                  value: /^[6-9]\d{9}$/,
                   message: t(
-                    "Please enter a valid Indian mobile number with country code '+91'"
+                    "Please enter a valid 10-digit Indian mobile number"
                   ),
                 },
+                validate: (value) => {
+                  if (flow === FLOW_TYPE.EDIT) return true; // Skip for edit if disabled, but here it is disabled anyway
+                  const fullPhone = `+91${value}`;
+                  if (existingPhoneNumbers.includes(fullPhone)) {
+                    return t("Phone number already exists");
+                  }
+                  return true;
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">+91</InputAdornment>
+                ),
+              }}
+              inputProps={{
+                maxLength: 10
               }}
             />
 
