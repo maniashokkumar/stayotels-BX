@@ -6,9 +6,12 @@ import { useTranslation } from 'react-i18next';
 import { Breadcrumb, Loader } from '../../components/index';
 import { CustomSelectField } from '../../components/ReactHookForm';
 import { Grid, Box, Button } from "@mui/material";
+import InfoIcon from '@mui/icons-material/Info';
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import Tippy from '@tippy.js/react';
+import 'tippy.js/dist/tippy.css';
 import { listHotel, listRoom, listCalendarDate } from "./CalendarViewApi";
 import './CalendarView.scss';
 
@@ -91,7 +94,8 @@ function CalendarView() {
             extendedProps: {
                 totalRooms: item.totalRooms,
                 availableRooms: item.availableRooms,
-                bookedRooms: item.bookedRooms
+                bookedRooms: item.bookedRooms,
+                lockedRooms: item.lockedRooms || 0
             }
         })));
         setPageLoader(false);
@@ -130,7 +134,7 @@ function CalendarView() {
 
     const renderEventContent = (eventInfo) => {
         const isMobile = window.innerWidth < 600;
-    
+
         const containerStyle = {
             fontSize: isMobile ? "12px" : "14px",
             backgroundColor: eventInfo.event.extendedProps.availableRooms === 0 ? "red" : "#4A90E2",
@@ -140,11 +144,11 @@ function CalendarView() {
             // textAlign: "center",
             lineHeight: "1.4",
         };
-    
+
         const textStyle = {
             marginBottom: isMobile ? "2px" : "4px",
         };
-    
+
         return (
             // <div style={containerStyle}>
             //     <div style={textStyle}>
@@ -158,19 +162,29 @@ function CalendarView() {
             //     </div>
             // </div>
             <div style={containerStyle}>
-            <div className="event-detail">
-                Available:{eventInfo.event.extendedProps.availableRooms}
+                <div className="event-detail">
+                    Available: {eventInfo.event.extendedProps.availableRooms}
+                </div>
+                <div className="event-detail">
+                    Booked: {eventInfo.event.extendedProps.bookedRooms}
+                </div>
+                {eventInfo.event.extendedProps.lockedRooms > 0 && (
+                    <div className="event-detail" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        Locked: {eventInfo.event.extendedProps.lockedRooms}
+                        <Tippy content="Rooms currently held for pending payments (May available, if user not complete the payment in 8 mins)" delay={[100, 0]} arrow={true}>
+                            <span style={{ display: 'flex', alignItems: 'center' }}>
+                                <InfoIcon style={{ fontSize: isMobile ? "10px" : "14px", cursor: 'help', color: '#ffd700' }} />
+                            </span>
+                        </Tippy>
+                    </div>
+                )}
+                <div className="event-detail">
+                    Total: {eventInfo.event.extendedProps.totalRooms}
+                </div>
             </div>
-            <div className="event-detail">
-                Booked: {eventInfo.event.extendedProps.bookedRooms}
-            </div>
-            <div className="event-detail">
-                Total: {eventInfo.event.extendedProps.totalRooms}
-            </div>
-        </div>
         );
     };
-    
+
 
     return (
         <div className={"calendar-page page"}>
