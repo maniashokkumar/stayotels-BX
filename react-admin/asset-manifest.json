@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/booking/static/css/main.1b0b1cd0.css",
-    "main.js": "/booking/static/js/main.302fc619.js",
+    "main.js": "/booking/static/js/main.9111f467.js",
     "static/css/240.aa886a0e.chunk.css": "/booking/static/css/240.aa886a0e.chunk.css",
     "static/js/240.dae07980.chunk.js": "/booking/static/js/240.dae07980.chunk.js",
     "static/css/66.5d440d03.chunk.css": "/booking/static/css/66.5d440d03.chunk.css",
@@ -9,7 +9,7 @@
     "static/css/501.ca96a430.chunk.css": "/booking/static/css/501.ca96a430.chunk.css",
     "static/js/501.99502e12.chunk.js": "/booking/static/js/501.99502e12.chunk.js",
     "static/css/395.dedf84db.chunk.css": "/booking/static/css/395.dedf84db.chunk.css",
-    "static/js/395.e2300d87.chunk.js": "/booking/static/js/395.e2300d87.chunk.js",
+    "static/js/395.6961a2d1.chunk.js": "/booking/static/js/395.6961a2d1.chunk.js",
     "static/css/406.2b9ae37f.chunk.css": "/booking/static/css/406.2b9ae37f.chunk.css",
     "static/js/406.d99914a6.chunk.js": "/booking/static/js/406.d99914a6.chunk.js",
     "static/css/720.85aab1d8.chunk.css": "/booking/static/css/720.85aab1d8.chunk.css",
@@ -21,9 +21,9 @@
     "static/css/795.755acbdb.chunk.css": "/booking/static/css/795.755acbdb.chunk.css",
     "static/js/795.4f70ce4f.chunk.js": "/booking/static/js/795.4f70ce4f.chunk.js",
     "static/css/152.152d8401.chunk.css": "/booking/static/css/152.152d8401.chunk.css",
-    "static/js/152.5ee0c14c.chunk.js": "/booking/static/js/152.5ee0c14c.chunk.js",
+    "static/js/152.ba5cc38d.chunk.js": "/booking/static/js/152.ba5cc38d.chunk.js",
     "static/css/690.1a42b666.chunk.css": "/booking/static/css/690.1a42b666.chunk.css",
-    "static/js/690.53bcff59.chunk.js": "/booking/static/js/690.53bcff59.chunk.js",
+    "static/js/690.b991609e.chunk.js": "/booking/static/js/690.b991609e.chunk.js",
     "static/css/307.8f187488.chunk.css": "/booking/static/css/307.8f187488.chunk.css",
     "static/js/307.8b68732e.chunk.js": "/booking/static/js/307.8b68732e.chunk.js",
     "static/css/255.fd23f4ab.chunk.css": "/booking/static/css/255.fd23f4ab.chunk.css",
@@ -72,7 +72,7 @@
     "index.html": "/booking/index.html",
     "static/media/getFetch.cjs": "/booking/static/media/getFetch.40f37ddea2378391108f.cjs",
     "main.1b0b1cd0.css.map": "/booking/static/css/main.1b0b1cd0.css.map",
-    "main.302fc619.js.map": "/booking/static/js/main.302fc619.js.map",
+    "main.9111f467.js.map": "/booking/static/js/main.9111f467.js.map",
     "240.aa886a0e.chunk.css.map": "/booking/static/css/240.aa886a0e.chunk.css.map",
     "240.dae07980.chunk.js.map": "/booking/static/js/240.dae07980.chunk.js.map",
     "66.5d440d03.chunk.css.map": "/booking/static/css/66.5d440d03.chunk.css.map",
@@ -80,7 +80,7 @@
     "501.ca96a430.chunk.css.map": "/booking/static/css/501.ca96a430.chunk.css.map",
     "501.99502e12.chunk.js.map": "/booking/static/js/501.99502e12.chunk.js.map",
     "395.dedf84db.chunk.css.map": "/booking/static/css/395.dedf84db.chunk.css.map",
-    "395.e2300d87.chunk.js.map": "/booking/static/js/395.e2300d87.chunk.js.map",
+    "395.6961a2d1.chunk.js.map": "/booking/static/js/395.6961a2d1.chunk.js.map",
     "406.2b9ae37f.chunk.css.map": "/booking/static/css/406.2b9ae37f.chunk.css.map",
     "406.d99914a6.chunk.js.map": "/booking/static/js/406.d99914a6.chunk.js.map",
     "720.85aab1d8.chunk.css.map": "/booking/static/css/720.85aab1d8.chunk.css.map",
@@ -92,9 +92,9 @@
     "795.755acbdb.chunk.css.map": "/booking/static/css/795.755acbdb.chunk.css.map",
     "795.4f70ce4f.chunk.js.map": "/booking/static/js/795.4f70ce4f.chunk.js.map",
     "152.152d8401.chunk.css.map": "/booking/static/css/152.152d8401.chunk.css.map",
-    "152.5ee0c14c.chunk.js.map": "/booking/static/js/152.5ee0c14c.chunk.js.map",
+    "152.ba5cc38d.chunk.js.map": "/booking/static/js/152.ba5cc38d.chunk.js.map",
     "690.1a42b666.chunk.css.map": "/booking/static/css/690.1a42b666.chunk.css.map",
-    "690.53bcff59.chunk.js.map": "/booking/static/js/690.53bcff59.chunk.js.map",
+    "690.b991609e.chunk.js.map": "/booking/static/js/690.b991609e.chunk.js.map",
     "307.8f187488.chunk.css.map": "/booking/static/css/307.8f187488.chunk.css.map",
     "307.8b68732e.chunk.js.map": "/booking/static/js/307.8b68732e.chunk.js.map",
     "255.fd23f4ab.chunk.css.map": "/booking/static/css/255.fd23f4ab.chunk.css.map",
@@ -117,6 +117,6 @@
   },
   "entrypoints": [
     "static/css/main.1b0b1cd0.css",
-    "static/js/main.302fc619.js"
+    "static/js/main.9111f467.js"
   ]
 }

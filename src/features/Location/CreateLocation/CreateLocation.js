@@ -49,14 +49,14 @@ function CreateLocation() {
     "Drop/Browse a Location Image"
   );
 
-  
+
   const handleFileChange = ({ file, meta, status, remove }) => {
     console.log("File meta:", meta.status);
     setUploading(true);
-  
+
     const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-    const maxSize = 2 * 1024 * 1024; 
-    console.log("File",file)
+    const maxSize = 5 * 1024 * 1024;
+    console.log("File", file)
     if (meta.status === "preparing") {
     } else if (meta.status === "done") {
       if (!allowedTypes.includes(file.type)) {
@@ -67,7 +67,7 @@ function CreateLocation() {
         remove();
         return;
       }
-      
+
       if (file.size > maxSize) {
         dispatch(showSnackbar({
           type: "error",
@@ -76,21 +76,21 @@ function CreateLocation() {
         remove();
         return;
       }
-  
+
       setUploadedFile(file);
     } else if (meta.status === "removed") {
       setUploadedFile(null);
       setUploaderKey(Date.now());
-    }else{
+    } else {
       dispatch(showSnackbar({
         type: "error",
         message: "Invalid file type! Only JPG, JPEG, and PNG are allowed."
       }))
     }
-  
+
     setUploading(false);
   };
-  
+
   const onPageLoad = async () => {
     // fetchLookupOptions();
     //if (!lookup.role) {
@@ -123,7 +123,7 @@ function CreateLocation() {
       reset(createLocationForm);
       if (selectedLocationData.image) {
         const imageUrl = selectedLocationData.image
-          ? `${AWS_URL}${selectedLocationData.image}` 
+          ? `${AWS_URL}${selectedLocationData.image}`
           : null;
         setUploadedFile(imageUrl);
       }
@@ -140,11 +140,11 @@ function CreateLocation() {
       }));
       return;
     }
-  
+
     if (uploadedFile instanceof File) {
       const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-      const maxSize = 2 * 1024 * 1024; 
-  
+      const maxSize = 5 * 1024 * 1024;
+
       if (!allowedTypes.includes(uploadedFile.type)) {
         dispatch(showSnackbar({
           type: "error",
@@ -152,7 +152,7 @@ function CreateLocation() {
         }));
         return;
       }
-  
+
       if (uploadedFile.size > maxSize) {
         dispatch(showSnackbar({
           type: "error",
@@ -161,20 +161,20 @@ function CreateLocation() {
         return;
       }
     }
-  
+
     setOnSumbitLoader(true);
     let response = null;
     let locationId = null;
-  
+
     if (flow === FLOW_TYPE.EDIT) {
       locationId = selectedLocationData.locationId;
       response = await updateLocation({ data: formData, locationId, dispatch });
     } else {
       response = await createLocation({ data: formData, dispatch });
     }
-  
+
     setOnSumbitLoader(false);
-  
+
     if (response.message === "success" || response === "Success") {
       locationId = response.data?.locationId ? response.data?.locationId : selectedLocationData.locationId;
       if (locationId) {
@@ -193,8 +193,8 @@ function CreateLocation() {
       }));
     }
   };
-  
-  
+
+
   const uploadImage = async (files, Id) => {
     // console.log("uploadImage",files)
     // console.log("Id",Id)
@@ -387,7 +387,7 @@ function CreateLocation() {
                   accept="image/jpeg, image/png, image/jpg"
                   inputWithFilesContent="Change Image"
                   maxFiles={1}
-                  maxSizeBytes={2 * 1024 * 1024}
+                  maxSizeBytes={5 * 1024 * 1024}
                 />
               </div>
             ) : (
@@ -399,7 +399,7 @@ function CreateLocation() {
                 accept="image/jpeg, image/png, image/jpg"
                 inputWithFilesContent="Change Image"
                 maxFiles={1}
-                maxSizeBytes={2 * 1024 * 1024}
+                maxSizeBytes={5 * 1024 * 1024}
               />
             )}
           </Grid>
@@ -417,8 +417,8 @@ function CreateLocation() {
               {onSumbitLoader
                 ? t("Loading...")
                 : flow === FLOW_TYPE.EDIT
-                ? t("Update")
-                : t("Create")}
+                  ? t("Update")
+                  : t("Create")}
             </Button>
           </div>
         </div>

@@ -783,7 +783,7 @@ function CreateRooms() {
                   accept="image/jpeg, image/png, image/jpg"
                   inputWithFilesContent="Add Image"
                   maxFiles={5}
-                  maxSizeBytes={2 * 1024 * 1024}
+                  maxSizeBytes={5 * 1024 * 1024}
                 />
               </>
             ) : (
@@ -795,7 +795,7 @@ function CreateRooms() {
                 accept="image/jpeg, image/png, image/jpg"
                 inputWithFilesContent="Add Image"
                 maxFiles={5}
-                maxSizeBytes={2 * 1024 * 1024}
+                maxSizeBytes={5 * 1024 * 1024}
               />
             )}
           </Grid>

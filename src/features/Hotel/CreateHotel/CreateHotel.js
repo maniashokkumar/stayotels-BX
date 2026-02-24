@@ -443,9 +443,8 @@ function CreateHotel() {
       dispatch(
         showSnackbar({
           type: "success",
-          message: `Hotel ${
-            flow === FLOW_TYPE.EDIT ? "updated" : "created"
-          } successfully.`,
+          message: `Hotel ${flow === FLOW_TYPE.EDIT ? "updated" : "created"
+            } successfully.`,
         })
       );
       navigate("/manage-hotel");
@@ -588,9 +587,9 @@ function CreateHotel() {
               options={
                 Array.isArray(lookup.amenities)
                   ? lookup.amenities.map((item) => ({
-                      label: item.amenities,
-                      value: item.amenitiesId,
-                    }))
+                    label: item.amenities,
+                    value: item.amenitiesId,
+                  }))
                   : []
               }
             />
@@ -866,7 +865,7 @@ function CreateHotel() {
                   accept="image/jpeg, image/png, image/jpg"
                   inputWithFilesContent="Add Image"
                   maxFiles={5}
-                  maxSizeBytes={2 * 1024 * 1024}
+                  maxSizeBytes={5 * 1024 * 1024}
                 />
               </>
             ) : (
@@ -878,7 +877,7 @@ function CreateHotel() {
                 accept="image/jpeg, image/png, image/jpg"
                 inputWithFilesContent="Add Image"
                 maxFiles={5}
-                maxSizeBytes={2 * 1024 * 1024}
+                maxSizeBytes={5 * 1024 * 1024}
               />
             )}
           </Grid>
@@ -896,8 +895,8 @@ function CreateHotel() {
               {onSumbitLoader
                 ? t("Loading...")
                 : flow === FLOW_TYPE.EDIT
-                ? t("Update")
-                : t("Create")}
+                  ? t("Update")
+                  : t("Create")}
             </Button>
           </div>
         </div>
