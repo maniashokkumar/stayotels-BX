@@ -12,8 +12,8 @@ import { fetchLookupList, showSnackbar } from '../../../redux/reducer/appSlice';
 
 import { Controller } from "react-hook-form";
 
-function CustomSelectField({ id, label,values,control,handleCustomInputChange,rules, variant = "standard", fullWidth = true, disabled, options, placeholder, multiple ,readOnly}) {
-   const dispatch = useDispatch();
+function CustomSelectField({ id, label, values, control, handleCustomInputChange, rules, variant = "standard", fullWidth = true, disabled, options, placeholder, multiple, readOnly }) {
+  const dispatch = useDispatch();
   return (
     <div className="form-field">
       <Controller
@@ -34,16 +34,18 @@ function CustomSelectField({ id, label,values,control,handleCustomInputChange,ru
               value={values}
               disabled={disabled ? true : false}
               onChange={e => {
-                if(!readOnly){
+                if (!readOnly) {
                   console.log("Input Changed");
-                  handleCustomInputChange(e);
+                  if (typeof handleCustomInputChange === 'function') {
+                    handleCustomInputChange(e);
+                  }
                   onChange(e.target.value);
-                }else{
+                } else {
                   dispatch(showSnackbar({ type: "error", message: `Permission Denied.` }));
                 }
               }}
               IconComponent={KeyboardArrowDownIcon}
-              label={variant === "outlined" ? label : undefined} 
+              label={variant === "outlined" ? label : undefined}
               fullWidth={fullWidth}
               error={!!error}
               // helperText={error ? error.message : null}

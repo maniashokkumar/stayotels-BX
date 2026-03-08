@@ -19,6 +19,8 @@ const CreateRooms = Loadable(lazy(() => import('../features/Rooms/CreateRooms/Cr
 const ManageRooms = Loadable(lazy(() => import('../features/Rooms/ManageRooms/ManageRooms')));
 const ManageReservation = Loadable(lazy(() => import('../features/Reservation/ManageReservation/ManageReservation')));
 const CreateReservation = Loadable(lazy(() => import('../features/Reservation/CreateReservation/CreateReservation')));
+const ManageCoupon = Loadable(lazy(() => import('../features/Coupon/ManageCoupon/ManageCoupon')));
+const CreateCoupon = Loadable(lazy(() => import('../features/Coupon/CreateCoupon/CreateCoupon')));
 const CalendarView = Loadable(lazy(() => import('../features/CalendarView/CalendarView')));
 
 
@@ -49,7 +51,7 @@ const MainRoutes = (user) => {
                     path: '/create-user',
                     element: <CreateUser />
                 },
-               {
+                {
                     path: '/manage-amenities',
                     element: <ManageAmenities />
                 },
@@ -57,7 +59,7 @@ const MainRoutes = (user) => {
                     path: '/create-amenities',
                     element: <CreateAmenities />
                 },
-                
+
                 {
                     path: '/manage-price',
                     element: <ManagePrice />
@@ -68,7 +70,7 @@ const MainRoutes = (user) => {
                 },
                 {
                     path: '/manage-hotel',
-                    element: < ManageHotel/>
+                    element: < ManageHotel />
                 },
                 {
                     path: '/create-hotel',
@@ -76,23 +78,31 @@ const MainRoutes = (user) => {
                 },
                 {
                     path: '/manage-rooms',
-                    element: < ManageRooms/>
+                    element: < ManageRooms />
                 },
                 {
                     path: '/create-rooms',
-                    element: < CreateRooms/>
+                    element: < CreateRooms />
                 },
                 {
                     path: '/manage-reservation',
-                    element: < ManageReservation/>
+                    element: < ManageReservation />
                 },
                 {
                     path: '/create-reservation',
-                    element: < CreateReservation/>
+                    element: < CreateReservation />
+                },
+                {
+                    path: '/manage-coupon',
+                    element: < ManageCoupon />
+                },
+                {
+                    path: '/create-coupon',
+                    element: < CreateCoupon />
                 },
                 {
                     path: '/calendar',
-                    element: < CalendarView/>
+                    element: < CalendarView />
                 },
             ]
         }

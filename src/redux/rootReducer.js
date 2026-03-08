@@ -8,6 +8,7 @@ import managePriceTableReducer from '../features/Price/ManagePrice/managePriceTa
 import manageHotelTableReducer from '../features/Hotel/ManageHotel/manageHotelTableSlice';
 import manageRoomsTableReducer from '../features/Rooms/ManageRooms/manageRoomsTableSlice';
 import manageReservationTableReducer from '../features/Reservation/ManageReservation/manageReservationTableSlice';
+import manageCouponTableReducer from '../features/Coupon/ManageCoupon/manageCouponTableSlice';
 
 const rootReducer = combineReducers({
   appReducer,
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   manageHotelTableReducer,
   manageRoomsTableReducer,
   manageReservationTableReducer,
+  manageCouponTableReducer,
 
 });
 

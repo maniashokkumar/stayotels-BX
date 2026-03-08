@@ -21,28 +21,39 @@
         .users {
           background-image: url("../../assets/icons/users-image.svg");
         }
+
         .location {
           background-image: url("../../assets/icons/location-white.svg");
         }
+
         .amenities {
           background-image: url("../../assets/icons/amenities-white.svg");
         }
-        .hotel{
+
+        .hotel {
           background-image: url("../../assets/icons/hotel-image.svg");
         }
-        .rooms{
+
+        .rooms {
           background-image: url("../../assets/icons/rooms-image.svg");
         }
+
         .price {
           background-image: url("../../assets/icons/price-white.svg");
         }
+
         .reservation {
           background-image: url("../../assets/icons/reservation-white.svg");
         }
+
         .calendar {
           background-image: url("../../assets/icons/calendar-white.svg");
         }
-        
+
+        .coupons {
+          background-image: url("../../assets/icons/coupons-white.svg");
+        }
+
       }
     }
   }
@@ -94,11 +105,13 @@
           font-weight: 500;
         }
       }
+
       .MuiTabs-indicator {
         background-color: #fff;
       }
     }
   }
+
   .tab-panel {
     .item {
       cursor: pointer;

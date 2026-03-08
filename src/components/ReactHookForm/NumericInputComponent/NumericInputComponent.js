@@ -43,7 +43,12 @@ function NumberComponent({
                 required: isRequired,
                 className: classes.redAsterisk,
               }}
-              onChange={onChange}
+              onChange={(e) => {
+                if (typeof handleCustomInputChange === 'function') {
+                  handleCustomInputChange(e);
+                }
+                onChange(e);
+              }}
               error={!!error}
               id={id}
               helperText={error ? error.message : message}

@@ -90,7 +90,15 @@ export default function SideDrawer(props) {
       icon: "calendar",
       isLast: false,
       lastChild: false
-    },    
+    },
+    {
+      id: "coupons",
+      title: t('Coupons'),
+      url: "/manage-coupon",
+      icon: "coupons",
+      isLast: false,
+      lastChild: false
+    },
     {
       id: "user",
       title: t('User'),

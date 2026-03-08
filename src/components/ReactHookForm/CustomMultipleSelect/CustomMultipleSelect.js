@@ -74,7 +74,9 @@ const CustomMultipleSelect = ({
               value={multiple ? (Array.isArray(value) ? value : []) : value} // Ensure value is an array for multiple
               onChange={(e) => {
                 const newValue = multiple ? e.target.value : e.target.value; // Handle both single and multiple
-                handleCustomInputChange(e);
+                if (typeof handleCustomInputChange === 'function') {
+                  handleCustomInputChange(e);
+                }
                 onChange(newValue);
               }}
               multiple={!!multiple} // Convert to boolean

@@ -16,7 +16,7 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
     createTheme({
       typography: {
         fontFamily: 'Rubik',
-        fontWeight:"bold",
+        fontWeight: "bold",
       },
       components: {
         MUIDataTableToolbar: {
@@ -28,11 +28,11 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
         },
         components: {
           MUIDataTableHeadCell: {
-            styleOverrides:{
+            styleOverrides: {
               root: {
                 "&.Mui-sortActive": {
                   "&&": {
-                    color: "white",  
+                    color: "white",
                     "& * ": {
                       color: "white"
                     }
@@ -41,7 +41,7 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
               }
             }
           },
-          
+
           // MuiTableSortLabel: {
           //   styleOverrides: {
           //     root: {
@@ -52,7 +52,7 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
           //       "&.Mui-active": {
           //         "&&": {
           //           color: "white", // Change the active color to blue
-              
+
           //           "& * ": {
           //             color: "white"
           //           }
@@ -64,9 +64,9 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
           //     }
           //   }
           // },
-          
+
           MUIDataTableToolbar: {
-            
+
             styleOverrides: {
               MuiDataTable: {
                 tableRoot: {
@@ -110,9 +110,9 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
     });
   // console.log(data, "data muiDattable")
 
-  const CustomChip = ({ label, value,inputType,index }) => {
+  const CustomChip = ({ label, value, inputType, index }) => {
 
-    if(inputType==="date"){
+    if (inputType === "date") {
       value = value.split("T")[0];
     }
     return (
@@ -132,28 +132,28 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
 
   const CustomFilterList = (props) => {
     let formattedList = [];
-     columns && columns.length > 0 && appliedFilterList && appliedFilterList.length > 0 && appliedFilterList.forEach((item, index) => {
+    columns && columns.length > 0 && appliedFilterList && appliedFilterList.length > 0 && appliedFilterList.forEach((item, index) => {
       if (item.length > 0) {
         if (isArray(item)) {
           if (isArray(item[0])) {
             console.log('array')
-           formattedList.push({ label: columns[index].label, value: item[0],inputType: columns[index].options.inputType, index })
+            formattedList.push({ label: columns[index].label, value: item[0], inputType: columns[index].options.inputType, index })
           } else if (isObject(item[0])) {
-             console.log('obj');
-            formattedList.push({ label: columns[index].label, value: item[0].label,inputType: columns[index].options.inputType, index })
+            console.log('obj');
+            formattedList.push({ label: columns[index].label, value: item[0].label, inputType: columns[index].options.inputType, index })
           } else {
             console.log('for text')
-            formattedList.push({ label: columns[index].label, value: item[0], inputType: columns[index].options.inputType,index })
+            formattedList.push({ label: columns[index].label, value: item[0], inputType: columns[index].options.inputType, index })
           }
         } else {
           formattedList.push({ label: columns[index].label, value: item[0], inputType: columns[index].options.inputType, index })
         }
       }
-    // console.log("formattedList ::::",formattedList)
+      // console.log("formattedList ::::",formattedList)
     });
     return (
       <div className="filter-chip-wrapper">
-        { formattedList && formattedList.length > 0 && formattedList.map((el, i) => {
+        {formattedList && formattedList.length > 0 && formattedList.map((el, i) => {
           return <CustomChip key={el.label + i} {...el} />
         })}
       </div>
@@ -163,34 +163,37 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
   function formatNumber(value) {
     let [integerPart, decimalPart] = value.toString().split(".");
     if (integerPart.length === 1) {
-        integerPart = "0" + integerPart;
+      integerPart = "0" + integerPart;
     }
     if (decimalPart && decimalPart.length === 1) {
-        decimalPart = decimalPart + "0";
+      decimalPart = decimalPart + "0";
     }
-    return integerPart  + ":" + (decimalPart || "00");
-}
-  const truncateText = (value, inputType,label) => {
+    return integerPart + ":" + (decimalPart || "00");
+  }
+  const truncateText = (value, inputType, label) => {
     // console.log("Value",value)
     try {
       if ((inputType === 'date' || inputType === 'Date') && value) {
         const date = new Date(value);
         return format(date, 'dd/MM/yyyy');
-      }else if(inputType === 'time'){
+      } else if (inputType === 'status') {
+        return (value === true || value === "true") ? 'Active' : 'Inactive';
+      } else if (inputType === 'time') {
         return formatNumber(value);
-      }else if( value === false){
+      } else if (value === false && inputType !== 'status') {
         return 'false'
       }
 
-      if(label === 'Date' && value){
+      const safeLabel = React.isValidElement(label) ? label.props.title : label;
+      if (safeLabel === 'Date' && value) {
         const date = new Date(value);
         return format(date, 'dd/MM/yyyy');
       }
-  
+
       if (React.isValidElement(value)) {
         return value;
       }
-  
+
       const stringValue = typeof value === 'string' ? value : value?.toString();
       if (stringValue?.length > 25) {
         return (
@@ -200,9 +203,9 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
         );
       }
 
-      if(value)
-  
-      return stringValue || '';
+      if (value)
+
+        return stringValue || '';
     } catch (error) {
       console.error("Error in truncateText:", error);
       return 'Invalid Data';
@@ -211,20 +214,13 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
 
   const modifiedColumns = columns.map((col) => ({
     ...col,
-        label: (
-      <Tooltip title={col.label}>
-        <span style={{ maxWidth: "120px", display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {col.label}
-        </span>
-      </Tooltip>
-    ),
     options: {
       ...col.options,
-      ...((col.name !== 'action' && col.name !== 'dataId' && col.name !== "avatarPath" && col.name !== "list-dataset" ) && {
+      ...((col.name !== 'action' && col.name !== 'dataId' && col.name !== "avatarPath" && col.name !== "list-dataset") && {
         customBodyRenderLite: (dataIndex) => {
           console.log(`Rendering column: ${col.name} at dataIndex: ${dataIndex}`);
           const value = data[dataIndex]?.[col.name];
-          console.log("VALUE:::",value)
+          console.log("VALUE:::", value)
           // if (value === undefined || value === null || value === []) {
           //   // return Array.isArray(subForm) && subForm[0]?.dataType === 'subForm'  ? [] : 'N/A';
           //   return 'N/A'
@@ -232,14 +228,14 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
           if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
             return 'N/A';
           }
-          
+
           // console.log("value",data[dataIndex]?.[col.name])
           return truncateText(value, col.options.inputType, col.label);
         },
       }),
     },
   }));
-  
+
   return (
     <div className={`mui-table ${tableClassName}`}>
       {loading && <Loader pageLoader={true} />}
