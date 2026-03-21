@@ -29,14 +29,15 @@ function ReservationForm({ priceDetails, priceFormData }) {
   const dispatch = useDispatch();
   const { t } = useTranslation();
 
+  const loginUser = useSelector((state) => state.loginReducer.user);
+
   const [pageLoader, setPageLoader] = useState(false);
   const [hotelListData, setHotelListData] = useState([]);
   const [roomOptions, setRoomOptions] = useState([]);
   const [selectedHotel, setSelectedHotel] = useState("");
   const [onSumbitLoader, setOnSumbitLoader] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState("");
-  const [price, setPrice] = useState("");
-  const [listRoom, setListRoom] = useState([]);
+  // In hotel-block flow, we don't need frontend price input.
 
   const flow = useSelector((state) => state.manageReservationTableReducer.flow);
   const showSessionPopup = useSelector((state) => state.loginReducer.showSessionPopup);
@@ -45,7 +46,6 @@ function ReservationForm({ priceDetails, priceFormData }) {
   }, [showSessionPopup]);
 
   const reservationForm = {
-    price: "",
     roomId: "",
     firstName: "",
     lastName: "",
@@ -57,15 +57,24 @@ function ReservationForm({ priceDetails, priceFormData }) {
     defaultValues: reservationForm,
   });
 
+  useEffect(() => {
+    if (!loginUser) return;
+    const fullName = loginUser?.name || "";
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    const firstName = parts[0] || "";
+    const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+    reset({
+      roomId: selectedRoom || "",
+      firstName,
+      lastName,
+      email: loginUser?.email || "",
+      phoneNumber: loginUser?.phone || "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loginUser]);
+
 
   const handleRoomSelect = (roomId) => {
-    console.log("roomId", roomId);
-    const selectedRoomData = priceDetails.find((room) => room.value === roomId);
-    console.log("selectedRoomData", selectedRoomData);
-    if (selectedRoomData) {
-      setPrice(selectedRoomData.price);
-      setValue("price", selectedRoomData.price);
-    }
     setSelectedRoom(roomId);
   };
 
@@ -75,14 +84,60 @@ function ReservationForm({ priceDetails, priceFormData }) {
     formData.noofRooms = priceFormData.noofRooms;
     formData.checkInDate = priceFormData.checkInDate;
     formData.checkOutDate = priceFormData.checkOutDate;
-    const phone = formData.phoneNumber;
-    if (phone && !phone.startsWith("+91")) {
-      formData.phoneNumber = `+91${phone}`;
+
+    // Mark this reservation as a hotel-side room block (not a customer booking).
+    formData.isHotelBlocked = true;
+
+    // Restrict flow based on max capacity (do not allow creating if guests exceed capacity).
+    const requestedRooms = Number(priceFormData?.noofRooms || 0);
+    const enteredPersons = Number(priceFormData?.cdnintnoOfPersons || 0);
+    const selectedRoomData = (priceDetails || []).find(
+      (r) => r?.value === formData.roomId
+    );
+
+    const availableRooms = Number(selectedRoomData?.availableRooms ?? 0);
+    const maxGuestsPerRoom = Number(selectedRoomData?.maxGuestsPerRoom ?? 0);
+    const maxGuestsTotal = maxGuestsPerRoom * requestedRooms;
+
+    if (requestedRooms <= 0 || enteredPersons <= 0) {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: "Please enter No of Persons and Total No of Rooms first.",
+        })
+      );
+      return;
     }
 
-    let response = null;
+    if (requestedRooms > availableRooms) {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: `Not enough rooms available. Only ${availableRooms} rooms left.`,
+        })
+      );
+      return;
+    }
+
+    if (maxGuestsPerRoom > 0 && enteredPersons > maxGuestsTotal) {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: `Max capacity exceeded. This room type allows up to ${maxGuestsTotal} guests for ${requestedRooms} rooms. Please increase Total No of Rooms or select another room type.`,
+        })
+      );
+      return;
+    }
+
+    const phone = formData.phoneNumber;
+    if (phone && typeof phone === "string" && phone.trim().length > 0) {
+      if (!phone.startsWith("+91")) {
+        formData.phoneNumber = `+91${phone}`;
+      }
+    }
+
     setOnSumbitLoader(true);
-    response = await createReservation({ data: formData, dispatch });
+    const response = await createReservation({ data: formData, dispatch });
     //    console.log(response, "response");
     setOnSumbitLoader(false);
 
@@ -95,6 +150,13 @@ function ReservationForm({ priceDetails, priceFormData }) {
         })
       );
       navigate("/manage-reservation");
+    } else {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: response || "Unable to create reservation",
+        })
+      );
     }
 
   };
@@ -112,40 +174,34 @@ function ReservationForm({ priceDetails, priceFormData }) {
             label={t("Room Name")}
             control={control}
             variant="outlined"
-            options={priceDetails.length === 0 ? listRoom : priceDetails}
+            options={priceDetails}
             values={selectedRoom}
             handleCustomInputChange={(e) => handleRoomSelect(e.target.value)}
             rules={{ required: "Room Name is required" }}
-          />
-
-          <InputField
-            id="price"
-            label="Price"
-            control={control}
-            variant="outlined"
-            value={price}
-            disabled={true}
           />
           <InputField
             id="firstName"
             label={"First Name"}
             control={control}
             variant="outlined"
-            rules={{ required: "First Name is required" }}
+            readOnly={true}
+            disabled={true}
           />
           <InputField
             id="lastName"
             label={"Last Name"}
             control={control}
             variant="outlined"
-            rules={{ required: "Last Name is required" }}
+            readOnly={true}
+            disabled={true}
           />
           <InputField
             id="email"
             label={"Email"}
             control={control}
             variant="outlined"
-            rules={{ required: t("Email is required"), pattern: { value: /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, message: t("Please enter a valid email address") } }}
+            readOnly={true}
+            disabled={true}
           />
           <NumberComponent
             id="phoneNumber"
@@ -153,14 +209,17 @@ function ReservationForm({ priceDetails, priceFormData }) {
             control={control}
             variant="outlined"
             rules={{
-              required: t("Phone Number is required"),
-              pattern: {
-                value: /^[6-9]\d{9}$/,
-                message: t(
-                  "Please enter a valid 10-digit Indian mobile number"
-                ),
+              validate: (value) => {
+                if (!value) return true; // optional
+                const raw = String(value).replace(/\D/g, "");
+                const tenDigit =
+                  raw.length >= 12 && raw.startsWith("91") ? raw.slice(2) : raw;
+                if (tenDigit.length !== 10) return t("Invalid phone number");
+                if (!/^[6-9]\d{9}$/.test(tenDigit)) return t("Invalid phone number");
+                return true;
               },
             }}
+            disabled={true}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">+91</InputAdornment>

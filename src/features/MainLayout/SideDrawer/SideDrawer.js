@@ -66,7 +66,7 @@ export default function SideDrawer(props) {
       icon: "rooms",
       isLast: false,
       lastChild: false
-    },    
+    },
     {
       id: "price",
       title: t('Price'),
@@ -82,7 +82,15 @@ export default function SideDrawer(props) {
       icon: "reservation",
       isLast: false,
       lastChild: false
-    },   
+    },
+    {
+      id: "cancellations",
+      title: t('Cancellations'),
+      url: "/manage-cancellation",
+      icon: "reservation",
+      isLast: false,
+      lastChild: false
+    },
     {
       id: "calendar",
       title: t('Calendar View'),
@@ -106,8 +114,8 @@ export default function SideDrawer(props) {
       icon: "users",
       isLast: false,
       lastChild: false
-    }, 
-    
+    },
+
   ];
 
   const filteredMenuList = menuList.filter((menuItem) => {

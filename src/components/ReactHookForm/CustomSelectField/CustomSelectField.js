@@ -53,7 +53,7 @@ function CustomSelectField({ id, label, values, control, handleCustomInputChange
             >
               {options.length > 0 ? (
                 options.map((el, i) => (
-                  <MenuItem key={el.value + i} value={el.value}>
+                  <MenuItem key={el.value + i} value={el.value} disabled={!!el.disabled}>
                     {el.label}
                   </MenuItem>
                 ))

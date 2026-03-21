@@ -18,6 +18,7 @@ const LogoSection = (props) => {
       }} >
         <Link
           to={`/manage-location`}
+          style={{ textDecoration: 'none' }}
         >
           <Logo />
         </Link>

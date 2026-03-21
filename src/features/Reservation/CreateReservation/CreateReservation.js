@@ -19,14 +19,13 @@ import {
   createReservation,
   updateReservation,
   hotelList,
-  priceCalculation,
+  availableRoomsByHotel,
 } from "./CreateReservationApi";
 import dayjs from "dayjs";
 import { FLOW_TYPE } from "../../../Utils/constants";
 import "./CreateReservation.scss";
 import { CircularProgress } from "@mui/material";
 import { id } from "date-fns/locale";
-import ReservationForm from "./ReservationForm";
 
 function CreateReservation() {
   const navigate = useNavigate();
@@ -41,9 +40,11 @@ function CreateReservation() {
   const showSessionPopup = useSelector(
     (state) => state.loginReducer.showSessionPopup
   );
+  const loginUser = useSelector((state) => state.loginReducer.user);
 
   const createReservationForm = {
     hotelId: "",
+    roomId: "",
     cdnintnoOfPersons: "",
     noofRooms: "",
     checkInDate: "",
@@ -55,6 +56,7 @@ function CreateReservation() {
     control,
     reset,
     setValue,
+    watch,
     setError,
     clearErrors,
     formState: { errors },
@@ -64,10 +66,17 @@ function CreateReservation() {
   const [pageLoader, setPageLoader] = useState(false);
   const [onSumbitLoader, setOnSumbitLoader] = useState(false);
   const [roomOptions, setRoomOptions] = useState([]);
+  const [availableRoomsRaw, setAvailableRoomsRaw] = useState([]);
   const [selectedHotel, setSelectedHotel] = useState("");
   const [hotelListData, setHotelListData] = useState([]);
   const [formDate, setFormData] = useState({});
   const [isPriceAvailable, setIsPriceAvailable] = useState(false);
+
+  const watchCheckInDate = watch("checkInDate");
+  const watchCheckOutDate = watch("checkOutDate");
+  const watchHotelId = watch("hotelId");
+  const watchNoOfRooms = watch("noofRooms");
+  const watchNoOfPersons = watch("cdnintnoOfPersons");
 
   const onPageLoad = async () => {
     // fetchLookupOptions();
@@ -181,70 +190,81 @@ function CreateReservation() {
   const submitHandler = async (formData) => {
     const checkIn = dayjs(formData.checkInDate);
     const checkOut = dayjs(formData.checkOutDate);
+    
+    if (!checkIn.isValid() || !checkOut.isValid()) return;
+    
+    const loginUserObj = loginUser || {};
+    const fullName = loginUserObj.name || "";
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    const firstName = parts[0] || "";
+    const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+    const email = loginUserObj.email || "";
+    let phone = loginUserObj.phone || "";
 
-    clearErrors(["checkInDate", "checkOutDate"]);
+    const requestedRooms = Number(formData.noofRooms || 0);
+    const enteredPersons = Number(formData.cdnintnoOfPersons || 0);
 
-    if (!formData.checkInDate) {
-      setError("checkInDate", {
-        type: "manual",
-        message: "Check-in date is required!",
-      });
-    }
-    if (!formData.checkOutDate) {
-      setError("checkOutDate", {
-        type: "manual",
-        message: "Check-out date is required!",
-      });
-    }
-    if (checkIn.isSame(checkOut)) {
-      setError("checkOutDate", {
-        type: "manual",
-        message: "Check-out date and check-in date cannot be the same!",
-      });
+    const selectedRoomData = (availableRoomsRaw || []).find(
+      (r) => r?.roomId === formData.roomId
+    );
+
+    if (!selectedRoomData) {
+      dispatch(showSnackbar({ type: "error", message: "Please select a room." }));
       return;
     }
 
-    if (checkIn.isAfter(checkOut)) {
-      setError("checkOutDate", {
-        type: "manual",
-        message: "Check-out date must be after check-in date!",
-      });
+    const availableRooms = Number(selectedRoomData?.totolNoRooms ?? 0);
+    const baseGuests = Number(selectedRoomData?.noOfPersons ?? 0);
+    const allowExtra = selectedRoomData?.allowExtraPerson === true || selectedRoomData?.allowExtraPerson === "true";
+    const maxExtra = Number(selectedRoomData?.maxExtraPersons ?? 0);
+    const maxGuestsPerRoom = baseGuests + (allowExtra ? maxExtra : 0);
+    const maxGuestsTotal = maxGuestsPerRoom * requestedRooms;
+
+    if (requestedRooms <= 0 || enteredPersons <= 0) {
+      dispatch(showSnackbar({ type: "error", message: "Please enter No of Persons and Total No of Rooms first." }));
       return;
     }
 
-    const formattedCheckInDate = checkIn.format("YYYY-MM-DD");
-    const formattedCheckOutDate = checkOut.format("YYYY-MM-DD");
+    if (requestedRooms > availableRooms) {
+      dispatch(showSnackbar({ type: "error", message: `Not enough rooms available. Only ${availableRooms} rooms left.` }));
+      return;
+    }
 
-    formData.checkInDate = formattedCheckInDate;
-    formData.checkOutDate = formattedCheckOutDate;
-    formData.noofRooms = parseInt(formData.noofRooms);
-    formData.cdnintnoOfPersons = parseInt(formData.cdnintnoOfPersons);
+    if (maxGuestsPerRoom > 0 && enteredPersons > maxGuestsTotal) {
+      dispatch(showSnackbar({ type: "error", message: `Max capacity exceeded. This room type allows up to ${maxGuestsTotal} guests for ${requestedRooms} rooms. Please increase Total No of Rooms or select another room type.` }));
+      return;
+    }
 
-    setFormData(formData);
-
-    try {
-      setOnSumbitLoader(true);
-      const response = await priceCalculation({ data: formData, dispatch });
-
-      if (response && Array.isArray(response) && response.length > 0) {
-        console.log("Price res data>>>", response);
-        const roomOptions = response.map((item) => ({
-          label: item.roomName,
-          value: item.roomId,
-          price: item.basePrice,
-        }));
-        setRoomOptions(roomOptions);
-        setIsPriceAvailable(true);
-      } else {
-        setIsPriceAvailable(false);
-        dispatch(
-          showSnackbar({ message: "No rooms available.", type: "error" })
-        );
+    if (phone && typeof phone === "string" && phone.trim().length > 0) {
+      if (!phone.startsWith("+91")) {
+        phone = `+91${phone}`;
       }
-      setOnSumbitLoader(false);
-    } catch (error) {
-      console.error("Error fetching price:", error);
-      setIsPriceAvailable(false);
+    }
+
+    const finalData = {
+      ...formData,
+      checkInDate: checkIn.format("YYYY-MM-DD"),
+      checkOutDate: checkOut.format("YYYY-MM-DD"),
+      firstName,
+      lastName,
+      email,
+      phoneNumber: phone,
+      isHotelBlocked: true,
+      noofRooms: requestedRooms,
+      cdnintnoOfPersons: enteredPersons,
+    };
+
+    setOnSumbitLoader(true);
+    const response = await createReservation({ data: finalData, dispatch });
+    setOnSumbitLoader(false);
+
+    if (response === "success") {
+      dispatch(updateTableState({ reservationCreated: true }));
+      dispatch(showSnackbar({ type: "success", message: `Reservation created successfully` }));
+      navigate("/manage-reservation");
+    } else {
+      const errorMsg = typeof response === 'string' ? response : (response?.message || "Unable to create reservation");
+      dispatch(showSnackbar({ type: "error", message: errorMsg }));
     }
   };
   const handleHotelChange = async (e) => {
@@ -253,6 +273,99 @@ function CreateReservation() {
   };
 
   const isDisabled = flow === FLOW_TYPE.EDIT;
+
+  // Single-step: fetch rooms as soon as hotel + dates are present.
+  useEffect(() => {
+    const canFetch =
+      watchHotelId &&
+      watchCheckInDate &&
+      watchCheckOutDate;
+
+    if (!canFetch) {
+      setAvailableRoomsRaw([]);
+      setRoomOptions([]);
+      setIsPriceAvailable(false);
+      return;
+    }
+
+    const checkIn = dayjs(watchCheckInDate);
+    const checkOut = dayjs(watchCheckOutDate);
+    if (!checkIn.isValid() || !checkOut.isValid()) return;
+    if (checkIn.isSame(checkOut) || checkIn.isAfter(checkOut)) {
+      setIsPriceAvailable(false);
+      return;
+    }
+
+    const formattedCheckInDate = checkIn.format("YYYY-MM-DD");
+    const formattedCheckOutDate = checkOut.format("YYYY-MM-DD");
+
+    const payload = {
+      hotelId: watchHotelId,
+      checkInDate: formattedCheckInDate,
+      checkOutDate: formattedCheckOutDate,
+    };
+
+    (async () => {
+      try {
+        setOnSumbitLoader(true);
+        const response = await availableRoomsByHotel({ data: payload, dispatch });
+        if (response && Array.isArray(response)) {
+          setAvailableRoomsRaw(response);
+          setIsPriceAvailable(true);
+        } else {
+          setAvailableRoomsRaw([]);
+          setRoomOptions([]);
+          setIsPriceAvailable(false);
+        }
+      } finally {
+        setOnSumbitLoader(false);
+      }
+    })();
+  }, [watchHotelId, watchCheckInDate, watchCheckOutDate, dispatch]);
+
+  useEffect(() => {
+    // Keep the ReservationForm payload in sync (used for create-time validation + pricing).
+    if (!watchHotelId || !watchCheckInDate || !watchCheckOutDate) return;
+
+    const checkIn = dayjs(watchCheckInDate);
+    const checkOut = dayjs(watchCheckOutDate);
+    if (!checkIn.isValid() || !checkOut.isValid()) return;
+
+    const formattedCheckInDate = checkIn.format("YYYY-MM-DD");
+    const formattedCheckOutDate = checkOut.format("YYYY-MM-DD");
+    const noofRooms = parseInt(watchNoOfRooms || "0", 10);
+    const cdnintnoOfPersons = parseInt(watchNoOfPersons || "0", 10);
+
+    setFormData({
+      hotelId: watchHotelId,
+      checkInDate: formattedCheckInDate,
+      checkOutDate: formattedCheckOutDate,
+      noofRooms,
+      cdnintnoOfPersons,
+    });
+  }, [watchHotelId, watchCheckInDate, watchCheckOutDate, watchNoOfRooms, watchNoOfPersons]);
+
+  useEffect(() => {
+    const requestedRooms = parseInt(watchNoOfRooms || "0", 10) || 0;
+    const roomOpts = (availableRoomsRaw || []).map((item) => {
+      const availableRooms = Number(item?.totolNoRooms ?? 0);
+      const baseGuests = Number(item?.noOfPersons ?? 0);
+      const allowExtra = item?.allowExtraPerson === true || item?.allowExtraPerson === "true";
+      const maxExtra = Number(item?.maxExtraPersons ?? 0);
+      const maxGuestsPerRoom = baseGuests + (allowExtra ? maxExtra : 0);
+
+      return {
+        label: `${item.roomName} (${availableRooms} available)`,
+        value: item.roomId,
+        disabled: requestedRooms > 0 ? availableRooms < requestedRooms : false,
+        availableRooms,
+        maxGuestsPerRoom,
+      };
+    });
+    setRoomOptions(roomOpts);
+  }, [availableRoomsRaw, watchNoOfRooms]);
+
+  const hotelDisabled = isDisabled || !watchCheckInDate || !watchCheckOutDate;
 
   return (
     <div className="createReservation-page page">
@@ -315,16 +428,28 @@ function CreateReservation() {
               variant="outlined"
               options={hotelListData}
               values={selectedHotel}
-              disabled={isDisabled}
+              disabled={hotelDisabled}
               handleCustomInputChange={(e) => handleHotelChange(e)}
               rules={{ required: "Hotel is required" }}
             />
+
+            {isPriceAvailable && (
+              <CustomSelectField
+                id="roomId"
+                label={t("Room Name")}
+                control={control}
+                variant="outlined"
+                options={roomOptions}
+                rules={{ required: "Room Name is required" }}
+              />
+            )}
 
             <NumericInputComponent
               id="cdnintnoOfPersons"
               label={"No of Persons"}
               control={control}
               variant="outlined"
+              inputProps={{ min: 1 }}
               // rules={{ required: "Number of Persons is required" }}
               rules={{
                 validate: (value) => {
@@ -382,6 +507,7 @@ function CreateReservation() {
               label={"Total No of Rooms"}
               control={control}
               variant="outlined"
+              inputProps={{ min: 1 }}
               rules={{
                 validate: (value) => {
                   if (!value.trim()) {
@@ -403,41 +529,21 @@ function CreateReservation() {
               }}
             />
           </div>
-
           <div style={{ display: "flex", justifyContent: "right" }}>
             <Button
               type="submit"
               variant="contained"
               color="primary"
               sx={{ mt: 2 }}
-              style={{
-                float: "right",
-                marginRight: "0.0rem",
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
+              style={{ float: "right", marginRight: "0.0rem" }}
               className="submit-button"
-              disabled={onSumbitLoader}
+              disabled={onSumbitLoader ? true : false}
             >
-              {onSumbitLoader ? (
-                <>
-                  <CircularProgress size={20} />
-                  {t("Loading...")}
-                </>
-              ) : (
-                "Check Price"
-              )}
+              {onSumbitLoader ? t("Loading...") : "Create"}
             </Button>
           </div>
         </form>
       </div>
-
-      {/* <ReservationForm priceDetails={roomOptions} priceFormData={formDate} /> */}
-      {isPriceAvailable && (
-        <ReservationForm priceDetails={roomOptions} priceFormData={formDate} />
-      )}
     </div>
   );
 }

@@ -25,6 +25,7 @@ export const login = createAsyncThunk('/login', async (data, { dispatch }) => {
     if (data.user) {
       window.localStorage.setItem('userName', data.user.userName);
       window.localStorage.setItem('userId', data.user.userId);
+      window.localStorage.setItem('userPhone', data.user.phone || "");
     }
     if (data.role) {
       window.localStorage.setItem('roleId', data.role.roleId);
@@ -39,8 +40,9 @@ export const login = createAsyncThunk('/login', async (data, { dispatch }) => {
       }
       let decodedAccessToken = jwt_decode(authTokens.accessToken);
       user = {
-        name: decodedAccessToken.name,
-        email: decodedAccessToken.email
+        name: decodedAccessToken?.name || data?.user?.userName,
+        email: decodedAccessToken?.email || data?.user?.userEmail,
+        phone: data?.user?.phone || ""
       }
 
       window.localStorage.setItem('authTokens', JSON.stringify(authTokens));
@@ -117,7 +119,8 @@ export const authenticateUser = createAsyncThunk('/authenticateUser',
       if (!isExpired) {
         user = {
           name: decodedAccessToken.name,
-          email: decodedAccessToken.email
+          email: decodedAccessToken.email,
+          phone: window.localStorage.getItem('userPhone') || ""
         }
       } else {
         window.localStorage.removeItem('authTokens');

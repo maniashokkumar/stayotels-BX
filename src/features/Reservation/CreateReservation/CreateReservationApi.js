@@ -7,11 +7,7 @@ export const createReservation = async ({ data, dispatch }) => {
     const res = await axiosPrService.post('/reservation/reservation', data);
     console.log("resssss",res)
     if (res.status === 200) {
-      if(res.data === "Not enough rooms available. Only 0 rooms left.") {
-        dispatch(showSnackbar({ type: "error", message: "Selected room is sold out! Try a different room type or date." }));
-      }else{
-        return res.data;
-      }
+      return res.data;
     }else{
       dispatch(showSnackbar({ type: "error", message: res.data?.message || "Unable to create reservation" }));
       return res.data;
@@ -75,6 +71,20 @@ export const priceCalculation = async ({ data, dispatch }) => {
     }
     console.log("Price calculation failed");
     dispatch(showSnackbar({ type: "error", message: res.data?.message || "Unable to fetch price" }));
+    return null;
+  } catch (error) {
+    dispatch(showSnackbar({ type: "error", message: error.message || "Server error" }));
+    return null;
+  }
+};
+
+export const availableRoomsByHotel = async ({ data, dispatch }) => {
+  try {
+    const res = await axiosPbService.post("/room/search/available-rooms", data);
+    if (res.status === 200) {
+      return res.data;
+    }
+    dispatch(showSnackbar({ type: "error", message: res.data?.message || "Unable to fetch rooms" }));
     return null;
   } catch (error) {
     dispatch(showSnackbar({ type: "error", message: error.message || "Server error" }));

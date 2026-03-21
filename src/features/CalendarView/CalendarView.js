@@ -13,6 +13,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Tippy from '@tippy.js/react';
 import 'tippy.js/dist/tippy.css';
 import { listHotel, listRoom, listCalendarDate } from "./CalendarViewApi";
+import DailyReservationModal from "./DailyReservationModal";
 import './CalendarView.scss';
 
 
@@ -28,6 +29,7 @@ function CalendarView() {
     const [selectedRoom, setSelectedRoom] = useState("");
     const [bookings, setBookings] = useState([]);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [modalData, setModalData] = useState({ open: false, date: "" });
 
     const calendarRef = useRef(null);
     const { control } = useForm();
@@ -111,6 +113,20 @@ function CalendarView() {
             }
 
             return newDate;
+        });
+    };
+
+    const handleEventClick = (info) => {
+        setModalData({
+            open: true,
+            date: info.event.startStr
+        });
+    };
+
+    const handleDateClick = (info) => {
+        setModalData({
+            open: true,
+            date: info.dateStr
         });
     };
 
@@ -260,10 +276,20 @@ function CalendarView() {
                                 right: "",
                             }}
                             eventContent={renderEventContent}
+                            eventClick={handleEventClick}
+                            dateClick={handleDateClick}
                         />
                     </div>
                 </div>
             </Grid>
+
+            <DailyReservationModal
+                open={modalData.open}
+                handleClose={() => setModalData({ ...modalData, open: false })}
+                date={modalData.date}
+                hotelId={selectedHotel}
+                roomId={selectedRoom}
+            />
         </div>
     )
 }

@@ -13,7 +13,8 @@ const useStyles = makeStyles(theme => ({
 
 function NumberComponent({
   id, label, type, control, rules, variant = "standard", fullWidth = true,
-  disabled, size, styles, handleCustomInputChange, required, message, values
+  disabled, size, styles, handleCustomInputChange, required, message, values,
+  inputProps, InputProps, onKeyDown
 }) {
   const classes = useStyles();
   const isRequired = required;
@@ -42,6 +43,14 @@ function NumberComponent({
                 shrink: true,
                 required: isRequired,
                 className: classes.redAsterisk,
+              }}
+              inputProps={inputProps}
+              InputProps={InputProps}
+              onKeyDown={(e) => {
+                if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+                if (onKeyDown) onKeyDown(e);
               }}
               onChange={(e) => {
                 if (typeof handleCustomInputChange === 'function') {

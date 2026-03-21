@@ -26,9 +26,6 @@ p {
   margin: 0;
 }
 
-.app-logo {
-  width: 190px;
-}
 
 .hide {
   display: none;
@@ -71,6 +68,19 @@ p {
   padding: 20px;
   border-radius: 10px;
   height: 100%;
+  /*
+  ### Components
+  - **Logo.js**: Updated to include the new logo icon and "STAYOTELS" text. Refined the font to `'Mona Sans'`, set `fontSize` to `22px`, and added `letterSpacing: '0.5px'` for better visual alignment with the frontend.
+  - **LogoSection.js**: Added `textDecoration: 'none'` to the logo link to remove the unwanted underline reported by the user.
+  - **app.scss**: Removed fixed width constraints on the logo to ensure proper rendering of the new responsive style.
+
+  ## Verification Results
+
+  ### Styling Check
+  - **Underline**: Confirmed that `textDecoration: 'none'` is applied to the wrapping `Link` in `LogoSection.js`.
+  - **Typography**: The font family, size, and letter spacing now match the brand guidelines from the frontend more accurately.
+  - **Layout**: The gap between the icon and text was increased to `8px` for better balance.
+  */
   position: relative;
 
   .card-title-header {

@@ -22,7 +22,7 @@ const CreateReservation = Loadable(lazy(() => import('../features/Reservation/Cr
 const ManageCoupon = Loadable(lazy(() => import('../features/Coupon/ManageCoupon/ManageCoupon')));
 const CreateCoupon = Loadable(lazy(() => import('../features/Coupon/CreateCoupon/CreateCoupon')));
 const CalendarView = Loadable(lazy(() => import('../features/CalendarView/CalendarView')));
-
+const ManageCancellation = Loadable(lazy(() => import('../features/Reservation/ManageCancellation/ManageCancellation')));
 
 const MainRoutes = (user) => {
     const location = useLocation();
@@ -87,6 +87,10 @@ const MainRoutes = (user) => {
                 {
                     path: '/manage-reservation',
                     element: < ManageReservation />
+                },
+                {
+                    path: '/manage-cancellation',
+                    element: < ManageCancellation />
                 },
                 {
                     path: '/create-reservation',
