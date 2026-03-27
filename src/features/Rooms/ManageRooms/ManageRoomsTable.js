@@ -152,7 +152,7 @@ function ManageRoomsTable() {
             options: {
               filter: false,
               sort: false,
-              display: userPermission !== null && userPermission.includes("ROOM:EDIT" || "ROOM:DELETE" ) ? true : false,
+              display: userPermission !== null && (userPermission.includes("ROOM:EDIT") || userPermission.includes("ROOM:DELETE")) ? true : false,
               customBodyRender: (value, tableMeta, updateValue) => {
                 //  const rowIndex = tableMeta.rowIndex
                 return (

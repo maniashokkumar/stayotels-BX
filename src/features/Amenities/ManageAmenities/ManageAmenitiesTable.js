@@ -152,7 +152,7 @@ function ManageAmenitiesTable() {
             options: {
               filter: false,
               sort: false,
-              display: userPermission !== null && userPermission.includes("AMENITIES:EDIT" || "AMENITIES:DELETE" ) ? true : false,
+              display: userPermission !== null && (userPermission.includes("AMENITIES:EDIT") || userPermission.includes("AMENITIES:DELETE")) ? true : false,
               customBodyRender: (value, tableMeta, updateValue) => {
                 //  const rowIndex = tableMeta.rowIndex
                 return (

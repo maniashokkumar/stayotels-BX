@@ -152,7 +152,7 @@ function ManageLocationTable() {
             options: {
               filter: false,
               sort: false,
-              display: userPermission !== null && userPermission.includes("LOCATION:EDIT" || "LOCATION:DELETE" ) ? true : false,
+              display: userPermission !== null && (userPermission.includes("LOCATION:EDIT") || userPermission.includes("LOCATION:DELETE")) ? true : false,
               customBodyRender: (value, tableMeta, updateValue) => {
                 //  const rowIndex = tableMeta.rowIndex
                 return (

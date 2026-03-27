@@ -18,6 +18,7 @@ function ManageCouponTable() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const userPermission = localStorage.getItem('roles');
 
     const data = useSelector((state) => state.manageCouponTableReducer.data);
     const loading = useSelector((state) => state.manageCouponTableReducer.loading);
@@ -116,19 +117,24 @@ function ManageCouponTable() {
             options: {
                 filter: false,
                 sort: false,
+                display: userPermission !== null && (userPermission.includes("COUPON:EDIT") || userPermission.includes("COUPON:DELETE")) ? true : false,
                 customBodyRender: (value, tableMeta) => {
                     return (
                         <div className="action-buttons-wrapper">
-                            <Tooltip title={t("Edit Coupon")}>
-                                <IconButton aria-label="edit" onClick={(e) => { handleTableButtonAction(e, CRUD_ACTION.EDIT, tableMeta) }}>
-                                    <EditOutlinedIcon />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t("Delete Coupon")}>
-                                <IconButton aria-label="delete" onClick={(e) => { handleTableButtonAction(e, CRUD_ACTION.DELETE, tableMeta) }}>
-                                    <HighlightOffOutlinedIcon />
-                                </IconButton>
-                            </Tooltip>
+                            {userPermission !== null && userPermission.includes("COUPON:EDIT") &&
+                                <Tooltip title={t("Edit Coupon")}>
+                                    <IconButton aria-label="edit" onClick={(e) => { handleTableButtonAction(e, CRUD_ACTION.EDIT, tableMeta) }}>
+                                        <EditOutlinedIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            }
+                            {userPermission !== null && userPermission.includes("COUPON:DELETE") &&
+                                <Tooltip title={t("Delete Coupon")}>
+                                    <IconButton aria-label="delete" onClick={(e) => { handleTableButtonAction(e, CRUD_ACTION.DELETE, tableMeta) }}>
+                                        <HighlightOffOutlinedIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            }
                         </div>
                     )
                 }

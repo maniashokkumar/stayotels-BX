@@ -30,7 +30,7 @@ function App() {
           if (location.pathname) {
             navigate(location.pathname);
           } else {
-            navigate('/manage-location');
+            navigate('/manage-reservation');
           }
         }
       } catch (e) {

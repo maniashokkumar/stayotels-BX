@@ -208,7 +208,7 @@ function ManageHotelTable() {
             options: {
               filter: false,
               sort: false,
-              display: userPermission !== null && userPermission.includes("HOTEL:EDIT" || "HOTEL:DELETE" ) ? true : false,
+              display: userPermission !== null && (userPermission.includes("HOTEL:EDIT") || userPermission.includes("HOTEL:DELETE")) ? true : false,
               customBodyRender: (value, tableMeta, updateValue) => {
                 //  const rowIndex = tableMeta.rowIndex
                 return (

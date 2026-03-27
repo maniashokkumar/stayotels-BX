@@ -154,7 +154,7 @@ function ManagePriceTable() {
             options: {
               filter: false,
               sort: false,
-              display: userPermission !== null && userPermission.includes("PRICE:EDIT" || "PRICE:DELETE" ) ? true : false,
+              display: userPermission !== null && (userPermission.includes("PRICE:EDIT") || userPermission.includes("PRICE:DELETE")) ? true : false,
               customBodyRender: (value, tableMeta, updateValue) => {
                 //  const rowIndex = tableMeta.rowIndex
                 return (

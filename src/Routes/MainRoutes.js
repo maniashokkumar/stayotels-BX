@@ -33,7 +33,7 @@ const MainRoutes = (user) => {
             children: [
                 {
                     path: '/',
-                    element: <ManageLocation />,
+                    element: <ManageReservation />,
                 },
                 {
                     path: '/manage-location',
