@@ -12,7 +12,7 @@ import { fetchLookupList, showSnackbar } from '../../../redux/reducer/appSlice';
 
 import { Controller } from "react-hook-form";
 
-function CustomSelectField({ id, label, values, control, handleCustomInputChange, rules, variant = "standard", fullWidth = true, disabled, options, placeholder, multiple, readOnly }) {
+function CustomSelectField({ id, label, values, control, handleCustomInputChange, rules, variant = "standard", fullWidth = true, disabled, options, placeholder, multiple, readOnly, IconComponent, size }) {
   const dispatch = useDispatch();
   return (
     <div className="form-field">
@@ -26,7 +26,7 @@ function CustomSelectField({ id, label, values, control, handleCustomInputChange
           formState,
         }) => {
 
-          return (<FormControl variant={variant} className="form-control" fullWidth={fullWidth} error={error ? error : null}>
+          return (<FormControl variant={variant} className="form-control" fullWidth={fullWidth} error={error ? error : null} size={size || undefined}>
             <InputLabel id={id}>{label}</InputLabel>
             <SelectMUI
               className="select-input-field"
@@ -44,9 +44,10 @@ function CustomSelectField({ id, label, values, control, handleCustomInputChange
                   dispatch(showSnackbar({ type: "error", message: `Permission Denied.` }));
                 }
               }}
-              IconComponent={KeyboardArrowDownIcon}
+              IconComponent={IconComponent || KeyboardArrowDownIcon}
               label={variant === "outlined" ? label : undefined}
               fullWidth={fullWidth}
+              size={size || undefined}
               error={!!error}
               // helperText={error ? error.message : null}
               multiple={multiple ? multiple : undefined}

@@ -1,162 +1,152 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
     Typography,
     Box,
-    Chip
+    Chip,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Stack,
 } from '@mui/material';
-import { AlertDialog, Loader } from '../../components/index';
-import { fetchDailyReservations } from './CalendarViewApi';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { AlertDialog } from '../../components/index';
 
-const DailyReservationModal = ({ open, handleClose, date, hotelId, roomId }) => {
+const DailyReservationModal = ({ open, handleClose, date, roomBreakdown = [], daySummary = null }) => {
     const { t } = useTranslation();
-    const dispatch = useDispatch();
-    const [reservations, setReservations] = useState([]);
-    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (open && date && hotelId && roomId) {
-            getReservations();
-        }
-    }, [open, date, hotelId, roomId]);
-
-    const getReservations = async () => {
-        setLoading(true);
-        // We search for reservations where this date falls between checkIn and checkOut
-        // Note: Backend MasterDao handles 'dateto' and 'datefrom' as criteria prefixes
-        // datetocheckIn: date (means checkIn <= date)
-        // datefromcheckOut: date (means checkOut >= date)
-        // However, the standard reservation search is usually by checkIn/checkOut overlap
-        // For now, we will use a more direct approach if the backend supports it, 
-        // or filter by dategte/datelte if it maps to ISODates.
-
-        const searchCriteria = {
-            hotelId: hotelId,
-            roomId: roomId,
-            date: date
-        };
-
-        const response = await fetchDailyReservations({ data: searchCriteria, dispatch });
-        setReservations(response || []);
-        setLoading(false);
-    };
-
-    const getStatusChip = (res) => {
-        const isCancelled = res.status === "CANCELLED" || res.isCancelled || res.isDeleted;
-        const isCompleted = res.status === "COMPLETED";
-        const isHotelBlocked = res.status === "HOTEL_BLOCKED";
-
-        if (isCancelled) return <Chip label={t("Cancelled")} color="error" size="small" />;
-        if (isCompleted) return <Chip label={t("Completed")} color="info" size="small" />;
-        if (isHotelBlocked) return <Chip label={t("Hotel Blocked")} color="warning" size="small" />;
-        if (res.isPaid) return <Chip label={t("Confirmed")} color="success" size="small" />;
-        return <Chip label={t("Pending")} color="warning" size="small" />;
-    };
+    const hasBreakdown = Array.isArray(roomBreakdown) && roomBreakdown.length > 0;
 
     return (
         <AlertDialog
             open={open}
             closeModalHandler={handleClose}
-            title={`${t("Reservations for")} ${date}`}
+            title={`${date} · ${t("Inventory")}`}
             maxWidth="lg"
             fullWidth={true}
             hideConfirmationButtons={true}
             modalName="daily-reservation-modal"
         >
             <Box sx={{ minHeight: 'auto', p: 0 }}>
-                <TableContainer component={Paper} elevation={0} sx={{ borderRadius: '12px', border: '1px solid #eef2f6', overflowX: 'hidden' }}>
-                    <Table size="medium">
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor: '#f8fafc' }}>
-                                <TableCell sx={{ fontWeight: 600, color: '#475569' }}>{t("Guest Name")}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#475569' }}>{t("Dates")}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#475569' }}>{t("Guests")}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#475569' }}>{t("Contact Info")}</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 600, color: '#475569' }}>{t("Status")}</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>{t("Amount")}</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center" sx={{ py: 10, border: 0 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-                                            <Loader pageLoader={false} />
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ) : reservations.length > 0 ? (
-                                reservations.map((res) => (
-                                    <TableRow key={res.reservationId} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                                        <TableCell>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                                                {res.guestName || t("N/A")}
+                {daySummary && (
+                    <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                            <strong>{t("Total rooms")}:</strong> {daySummary.totalRooms}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            <strong>{t("Booked")}:</strong> {daySummary.bookedRooms}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            <strong>{t("Available")}:</strong> {daySummary.availableRooms}
+                        </Typography>
+                        {(daySummary.lockedRooms || 0) > 0 && (
+                            <Typography variant="body2" color="text.secondary">
+                                <strong>{t("Locked (Booking in progress)")}:</strong> {daySummary.lockedRooms}
+                            </Typography>
+                        )}
+                    </Box>
+                )}
+
+                {hasBreakdown && (
+                    <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
+                            {t("By room type")}
+                        </Typography>
+                        <Box
+                            sx={{
+                                borderRadius: '12px',
+                                border: '1px solid #e2e8f0',
+                                overflow: 'hidden',
+                                bgcolor: '#fff',
+                            }}
+                        >
+                            {roomBreakdown.map((row, index) => {
+                                const soldOut = row.availableRooms === 0;
+                                const key = row.roomId || row.roomName || String(index);
+                                return (
+                                    <Accordion
+                                        key={key}
+                                        disableGutters
+                                        elevation={0}
+                                        sx={{
+                                            '&:before': { display: 'none' },
+                                            borderBottom: '1px solid #eef2f6',
+                                            '&:last-of-type': { borderBottom: 'none' },
+                                            bgcolor: '#fafdfb',
+                                        }}
+                                    >
+                                        <AccordionSummary
+                                            expandIcon={<ExpandMoreIcon sx={{ color: '#64748b' }} />}
+                                            sx={{
+                                                minHeight: 52,
+                                                px: 2,
+                                                '& .MuiAccordionSummary-content': {
+                                                    alignItems: 'center',
+                                                    gap: 1.5,
+                                                    flexWrap: 'wrap',
+                                                    my: 1,
+                                                },
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="subtitle2"
+                                                sx={{
+                                                    fontWeight: 700,
+                                                    color: '#14532d',
+                                                    flex: '1 1 140px',
+                                                    minWidth: 0,
+                                                    lineHeight: 1.35,
+                                                }}
+                                            >
+                                                {row.roomName || row.roomId}
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: '#64748b', fontFamily: 'monospace', fontSize: '11px' }}>
-                                                #{res.orderId || res.reservationId}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box>
-                                                <Typography variant="body2" sx={{ color: '#334155', fontWeight: 500 }}>
-                                                    {new Date(res.checkIn).toLocaleDateString()} - {new Date(res.checkOut).toLocaleDateString()}
+                                            {soldOut ? (
+                                                <Chip label={t("Sold out")} size="small" color="error" sx={{ height: 22 }} />
+                                            ) : (
+                                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                                                    {t("Available")}: {row.availableRooms}
                                                 </Typography>
-                                                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                                    {res.noOfRooms} {t("Rooms")}
-                                                </Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box>
-                                                <Typography variant="body2" sx={{ color: '#334155' }}>
-                                                    {res.noOfPersons} {t("Total")}
-                                                </Typography>
-                                                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                                    {res.noOfAdults} {t("Adults")}, {res.noOfChildren} {t("Children")}
-                                                </Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box>
-                                                <Typography variant="body2" sx={{ color: '#334155', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                    <i className="fa-regular fa-envelope" style={{ fontSize: '10px' }}></i> {res.guestEmail}
-                                                </Typography>
-                                                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                                    <i className="fa-solid fa-phone" style={{ fontSize: '10px' }}></i> {res.guestPhone}
-                                                </Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell align="center">{getStatusChip(res)}</TableCell>
-                                        <TableCell align="right">
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0f172a' }}>
-                                                {res.currency || "INR"} {res.totalCost ? res.totalCost.toLocaleString() : "0"}
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
-                                        <Box sx={{ opacity: 0.5 }}>
-                                            <i className="fa-solid fa-calendar-xmark" style={{ fontSize: '32px', marginBottom: '8px', color: '#94a3b8' }}></i>
-                                            <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>
-                                                {t("No reservations found for this date")}
-                                            </Typography>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                            )}
+                                        </AccordionSummary>
+                                        <AccordionDetails sx={{ px: 2, pb: 2, pt: 0, bgcolor: '#f8fafc' }}>
+                                            <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+                                                {[
+                                                    [t('Total'), row.totalRooms],
+                                                    [t('Booked'), row.bookedRooms],
+                                                    [t('Locked (Booking in progress)'), row.lockedRooms ?? 0],
+                                                    [t('Available'), row.availableRooms],
+                                                ].map(([label, val]) => (
+                                                    <Box
+                                                        key={label}
+                                                        sx={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            gap: 2,
+                                                        }}
+                                                    >
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            {label}
+                                                        </Typography>
+                                                        <Typography variant="body2" fontWeight={700} color="#0f172a">
+                                                            {val}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Stack>
+                                        </AccordionDetails>
+                                    </Accordion>
+                                );
+                            })}
+                        </Box>
+                    </Box>
+                )}
+
+                {!hasBreakdown && !daySummary && (
+                    <Typography variant="body2" color="text.secondary">
+                        {t("No room-type breakdown for this date (select a day in the loaded month).")}
+                    </Typography>
+                )}
             </Box>
         </AlertDialog>
     );

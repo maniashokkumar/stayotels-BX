@@ -25,10 +25,10 @@ const Main = styled("main")(({ theme, open }) => {
         width: "100%"
       },
     }),
-    // padding: "20px",
-    marginTop: "84px",
-    [theme.breakpoints.up("md")]: {
-      marginTop: "64px",
+    /* Match fixed AppBar + Toolbar height (84px was too tall on small screens → grey strip under header) */
+    marginTop: theme.spacing(7),
+    [theme.breakpoints.up("sm")]: {
+      marginTop: theme.spacing(8),
     },
     transition: "all 0.2s",
   };

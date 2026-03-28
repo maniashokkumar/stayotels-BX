@@ -14,12 +14,13 @@ import { Loader } from '../index'
 import './AlertDialog.scss';
 
 export default function AlertDialog(props) {
-  const { title, sx, children, hideConfirmationButtons, open, closeModalHandler, submitModalHandler, confirmText, cancelText, modalName, fullScreen, hideCloseButton, loading, maxWidth } = props;
+  const { title, sx, children, hideConfirmationButtons, open, closeModalHandler, submitModalHandler, confirmText, cancelText, modalName, fullScreen, hideCloseButton, loading, maxWidth, fullWidth } = props;
 
   return (
     <div className={`alert-dialog-wrapper`}>
       <Dialog
         maxWidth={maxWidth ? maxWidth : undefined}
+        fullWidth={Boolean(fullWidth)}
         fullScreen={fullScreen ? fullScreen : false}
         open={open}
         onClose={closeModalHandler}

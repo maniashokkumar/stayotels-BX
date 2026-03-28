@@ -9,7 +9,7 @@ import Box from '@mui/material/Box';
 
 import './Breadcrumb.scss';
 
-function Breadcrumb({ pageTitle, buttonList, breadcrumbList, breadCrumButtonClickHandler, rmMargin }) {
+function Breadcrumb({ pageTitle, buttonList, breadcrumbList, breadCrumButtonClickHandler, rmMargin, className }) {
   const navigate = useNavigate();
 
   return (
@@ -17,7 +17,7 @@ function Breadcrumb({ pageTitle, buttonList, breadcrumbList, breadCrumButtonClic
       <Stack spacing={0}>
         <Box
           component="div"
-          className={`breadcrumb-wrapper`}
+          className={`breadcrumb-wrapper${className ? ` ${className}` : ''}`}
           sx={{ marginBottom: rmMargin ? 0 : '15px' }}>
           <div>
             {pageTitle && <h2 className="page-title">{pageTitle}</h2>}

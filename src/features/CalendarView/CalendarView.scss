@@ -1,3 +1,277 @@
+/* Hotel filter: wide enough for names, capped so it doesn’t span the whole card on desktop */
+.calendar-page .inventory-filters-stack .form-field {
+  width: 100%;
+  min-width: min(100%, 12rem);
+  max-width: min(100%, 30rem);
+}
+
+.calendar-page .calendar-inventory-card {
+  @media (max-width: 599px) {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+.calendar-card-inner {
+  padding: 16px;
+  border-radius: 8px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (min-width: 600px) {
+    max-width: min(100%, 72rem);
+    padding: 20px;
+  }
+
+  @media (max-width: 599px) {
+    padding: 6px 2px;
+    margin-left: 0;
+    margin-right: 0;
+    max-width: none;
+    border-radius: 6px;
+  }
+}
+
+.inventory-calendar-host {
+  width: 100%;
+}
+
+/* Mobile: 3 equal columns; wider screens add more via auto-fill */
+.inventory-responsive-month {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  @media (min-width: 600px) {
+    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  }
+
+  @media (min-width: 960px) {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 12px;
+  }
+}
+
+.inventory-day-cell {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 5px 4px 6px;
+  cursor: pointer;
+  background: #fff;
+  min-width: 0;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+  @media (min-width: 600px) {
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  &:hover {
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+    border-color: #cbd5e1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #4374f4;
+    outline-offset: 2px;
+  }
+}
+
+.inventory-day-cell__header {
+  font-weight: 600;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  color: #8a8686;
+  letter-spacing: 0.04em;
+  text-align: center;
+  word-break: break-word;
+  hyphens: auto;
+
+  @media (min-width: 600px) {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-align: left;
+    color: #8a8686;
+  }
+}
+
+.inventory-day-cell__empty {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  padding: 6px 2px;
+  text-align: center;
+
+  @media (min-width: 600px) {
+    font-size: 0.75rem;
+    padding: 8px 4px;
+  }
+}
+
+/* Tighter stats inside 3-column mobile cards */
+.inventory-day-cell .inventory-day-stats {
+  font-size: 7px;
+  padding: 3px 3px;
+
+  .inventory-day-stats__row--statline {
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .inventory-day-stats__label-caps {
+    font-size: 6.5px;
+  }
+
+  .inventory-day-stats__value {
+    font-size: 7px;
+  }
+
+  @media (min-width: 600px) {
+    font-size: 12px;
+    padding: 6px 8px;
+
+    .inventory-day-stats__row--statline {
+      white-space: nowrap;
+    }
+
+    .inventory-day-stats__label-caps {
+      font-size: 0.92em;
+    }
+
+    .inventory-day-stats__value {
+      font-size: inherit;
+    }
+  }
+}
+
+.inventory-day-stats {
+  word-break: break-word;
+  box-sizing: border-box;
+
+  &.inventory-day-stats--stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .inventory-day-stats__row {
+    width: 100%;
+    line-height: 1.2;
+    font-size: inherit;
+  }
+
+  .inventory-day-stats__row--total {
+    font-weight: 600;
+  }
+
+  .inventory-day-stats__label-caps {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.92em;
+  }
+
+  .inventory-day-stats__row--locked {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .inventory-day-stats__label-caps--locked-mixed {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-weight: 700;
+  }
+
+  .inventory-day-stats__row--statline {
+    white-space: nowrap;
+  }
+
+  @media (min-width: 600px) {
+    font-size: 12px;
+    padding: 6px 8px;
+
+    .event-detail {
+      margin-bottom: 3px;
+      font-size: inherit;
+      line-height: 1.35;
+    }
+
+    .event-detail:last-child {
+      margin-bottom: 0;
+    }
+
+    .inventory-day-stats__primary {
+      font-size: 13px;
+      font-weight: 700;
+    }
+  }
+
+  @media (max-width: 599px) {
+    font-size: 8px;
+    padding: 3px 4px;
+    line-height: 1.15;
+
+    .event-detail {
+      margin-bottom: 1px;
+      font-size: inherit;
+    }
+
+    .inventory-day-stats__primary {
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    strong {
+      font-weight: 600;
+    }
+
+    &.inventory-day-stats--stack {
+      gap: 1px;
+    }
+
+    .inventory-day-stats__row--total {
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .inventory-day-stats__label-caps {
+      font-size: 8px;
+    }
+
+    .inventory-day-stats__value {
+      font-size: 8px;
+      font-weight: 600;
+    }
+  }
+}
+
+.inventory-day-stats__lock-tip {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-left: 1px;
+  vertical-align: middle;
+}
+
+.inventory-day-stats__info-icon {
+  font-size: 13px !important;
+  width: 1em !important;
+  height: 1em !important;
+
+  @media (max-width: 599px) {
+    font-size: 10px !important;
+  }
+}
+
 .calendar-page {
   .form-card {
       .form-fields-block {
@@ -19,74 +293,58 @@
   }
 }
 
-.fc-event {
-  border: none !important;
-  box-shadow: none !important;
-}
+/* Availability grid (room types x dates) — legacy; grid view removed from UI */
+.inventory-availability-grid {
+  width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
 
-.fc-daygrid-event {
-  .event-content {
-      font-size: 14px;
-      background-color: #4A90E2;
-      color: white;
-      padding: 5px;
-      border-radius: 4px;
-      line-height: 1.4;
-
-      .sold-out {
-          background-color: red;
-          border: 2px solid red;
-      }
-
-      .event-detail {
-          margin-bottom: 4px;
-      }
-
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 100%;
   }
 
-  @media (max-width: 1600px) {
-         
-    .event-detail {
-        margin-bottom: 2px;
-        font-size: 16px;
-    }
-}
-
-  @media (max-width: 600px) {
-     
-      .event-detail {
-          margin-bottom: 2px;
-          font-size: 12px;
-      }
+  th.inventory-availability-grid__sticky,
+  td.inventory-availability-grid__sticky {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 2px 0 4px rgba(15, 23, 42, 0.06);
+    font-weight: 600;
+    max-width: 140px;
+    white-space: normal;
+    vertical-align: middle;
   }
 
-  @media (max-width: 500px) {
-   
-
-    .event-detail {
-        margin-bottom: 2px;
-        font-size: 6px;
-       
-    }
-}
-
-  @media (max-width: 400px) {
-   
-
-    .event-detail {
-        margin-bottom: 2px;
-        font-size: 5px;
-       
-    }
-}
-
-@media (max-width: 300px) {
-   
-
-  .event-detail {
-      margin-bottom: 2px;
-      font-size: 5px;
-     
+  thead th {
+    background: #edf2f7;
+    font-size: 0.7rem;
+    padding: 6px 4px;
+    text-align: center;
+    white-space: nowrap;
   }
-}
+
+  tbody td:not(.inventory-availability-grid__sticky) {
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 6px 4px;
+    min-width: 36px;
+  }
+
+  @media (min-width: 600px) {
+    thead th {
+      font-size: 0.8rem;
+      padding: 8px 6px;
+    }
+
+    tbody td:not(.inventory-availability-grid__sticky) {
+      font-size: 0.85rem;
+      padding: 8px 6px;
+      min-width: 44px;
+    }
+  }
 }

@@ -2,37 +2,44 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  // margin-bottom: 15px;
 
   .breadcrumb {
     ol {
+      flex-wrap: wrap;
+      row-gap: 4px;
+
       li {
         a {
           cursor: pointer;
-          color: #888;
-          font-size: 0.875rem;
-          transition: all 0.2s;
+          color: #64748b;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          letter-spacing: 0.01em;
+          transition: color 0.2s ease;
 
           &:hover {
             text-decoration: none;
-            color: #121212;
+            color: #0f172a;
           }
         }
 
         &:last-child {
           a {
             pointer-events: none;
-            color: #121212;
+            color: #334155;
+            font-weight: 600;
           }
         }
 
         .navigator {
-          color: #888;
+          color: #cbd5e1;
+          font-size: 1.125rem !important;
         }
       }
     }
+
     .MuiBreadcrumbs-separator {
-      margin: 0;
+      margin: 0 4px;
     }
   }
 
@@ -43,9 +50,24 @@
   }
 
   .page-title {
-    margin: 0;
+    margin: 0 0 8px 0;
     font-weight: 600;
-    font-family: "Rubik";
-    color: #888;
+    font-family: "Rubik", sans-serif;
+    font-size: 1.5rem;
+    color: #1e293b;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Inventory & similar pages: title hidden, tighter breadcrumb-only header */
+.breadcrumb-wrapper.breadcrumb-wrapper--trail-only {
+  align-items: flex-start;
+
+  .page-title {
+    display: none;
+  }
+
+  .breadcrumb {
+    padding: 4px 0 2px;
   }
 }

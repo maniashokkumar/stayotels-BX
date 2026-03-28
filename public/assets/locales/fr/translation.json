@@ -241,6 +241,7 @@
   "Login Type" : "Type de connexion",
   "Stock Management" : "Gestion de stock",
   "Inventory Management" : "Gestion de l'inventaire",
+  "Locked (Booking in progress)" : "Verrouillé (réservation en cours)",
   "Pincode Validation Required" : "Validation du code PIN requise",
 
   "Modify Theme" : "Modifier le thème",

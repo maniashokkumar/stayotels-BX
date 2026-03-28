@@ -39,24 +39,6 @@ export const listRoom = async ({ data, dispatch }) => {
     });
 };
 
-export const fetchDailyReservations = async ({ data, dispatch }) => {
-  return axiosPrService.post('/calendar/daily-reservations', data)
-    .then(res => {
-      if (res.status === 200) {
-        return res.data;
-      } else {
-        dispatch(showSnackbar({ type: "error", message: res.data ? res.data : "Unable to fetch reservations" }));
-        return [];
-      }
-    }).catch(e => {
-      if (e.status !== 401) {
-        dispatch(showSnackbar({ type: "error", message: e.message }));
-        return [];
-      }
-    });
-};
-
-
 export const listCalendarDate = async ({ data, dispatch }) => {
   return axiosPrService.post('/calendar/view', data)
     .then(res => {
@@ -72,6 +54,23 @@ export const listCalendarDate = async ({ data, dispatch }) => {
       if (e.status !== 401) {
         dispatch(showSnackbar({ type: "error", message: e.message }));
         return []
+      }
+    });
+};
+
+export const listCalendarHotelView = async ({ data, dispatch }) => {
+  return axiosPrService.post('/calendar/hotel-view', data)
+    .then(res => {
+      if (res.status === 200) {
+        return res.data;
+      } else {
+        dispatch(showSnackbar({ type: "error", message: res.data ? res.data : "Service unavailable" }));
+        return [];
+      }
+    }).catch(e => {
+      if (e.status !== 401) {
+        dispatch(showSnackbar({ type: "error", message: e.message }));
+        return [];
       }
     });
 };

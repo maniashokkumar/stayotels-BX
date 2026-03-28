@@ -65,9 +65,17 @@ p {
 /* COMMON CSS -starts- */
 .card-wrapper-default {
   background-color: #fff;
-  padding: 20px;
+  padding: 12px;
   border-radius: 10px;
   height: 100%;
+
+  @media (min-width: 600px) {
+    padding: 16px;
+  }
+
+  @media (min-width: 960px) {
+    padding: 20px;
+  }
   /*
   ### Components
   - **Logo.js**: Updated to include the new logo icon and "STAYOTELS" text. Refined the font to `'Mona Sans'`, set `fontSize` to `22px`, and added `letterSpacing: '0.5px'` for better visual alignment with the frontend.

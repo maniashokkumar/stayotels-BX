@@ -8,7 +8,7 @@ import './Select.scss';
 const Select = (props) => {
   const { selectedOption, onChange, id, label, placeholder, options } = props;
   return (
-    <div className="form-field">
+    <div className="form-field legacy-app-select">
       <span>{label}</span>
       <SelectMUI
         className="select-input-field"
