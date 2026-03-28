@@ -17,7 +17,7 @@ const LogoSection = (props) => {
         display: { xs: 'none', md: 'flex' }
       }} >
         <Link
-          to={`/manage-location`}
+          to={`/inventory`}
           style={{ textDecoration: 'none' }}
         >
           <Logo />

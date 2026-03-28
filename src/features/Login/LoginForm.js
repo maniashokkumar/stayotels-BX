@@ -29,7 +29,7 @@ function LoginForm({showForm}) {
   const submitHandler = async (formData) => {
     let response = await dispatch(login(formData))
     if (response.payload?.email) {
-      navigate('/manage-location');
+      navigate('/inventory');
     }
   }
 

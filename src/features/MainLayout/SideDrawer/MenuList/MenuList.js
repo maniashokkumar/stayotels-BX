@@ -40,7 +40,7 @@ export default function MenuList(props) {
           let selectedItem = false;
           if (item.target) { itemTarget = "_blank"; }
 
-          if (item.url === "/manage-location" && pathname === "/") {
+          if (item.url === "/inventory" && pathname === "/") {
             selectedItem = true
           } else {
             item.url === pathname ? selectedItem = true : selectedItem = false

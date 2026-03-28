@@ -33,7 +33,7 @@ const MainRoutes = (user) => {
             children: [
                 {
                     path: '/',
-                    element: <ManageReservation />,
+                    element: <CalendarView />,
                 },
                 {
                     path: '/manage-location',
@@ -105,7 +105,7 @@ const MainRoutes = (user) => {
                     element: < CreateCoupon />
                 },
                 {
-                    path: '/calendar',
+                    path: '/inventory',
                     element: < CalendarView />
                 },
             ]

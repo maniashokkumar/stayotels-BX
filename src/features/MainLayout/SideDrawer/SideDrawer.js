@@ -36,6 +36,38 @@ export default function SideDrawer(props) {
 
   const menuList = [
     {
+      id: "calendar",
+      title: t('Inventory'),
+      url: "/inventory",
+      icon: "calendar",
+      isLast: false,
+      lastChild: false
+    },
+    {
+      id: "reservation",
+      title: t('Reservation'),
+      url: "/manage-reservation",
+      icon: "reservation",
+      isLast: false,
+      lastChild: false
+    },
+    {
+      id: "cancellations",
+      title: t('Cancellations'),
+      url: "/manage-cancellation",
+      icon: "reservation",
+      isLast: false,
+      lastChild: false
+    },
+    {
+      id: "coupons",
+      title: t('Coupons'),
+      url: "/manage-coupon",
+      icon: "coupons",
+      isLast: false,
+      lastChild: false
+    },
+    {
       id: "location",
       title: t('Location'),
       url: "/manage-location",
@@ -76,38 +108,6 @@ export default function SideDrawer(props) {
       lastChild: false
     },
     {
-      id: "reservation",
-      title: t('Reservation'),
-      url: "/manage-reservation",
-      icon: "reservation",
-      isLast: false,
-      lastChild: false
-    },
-    {
-      id: "cancellations",
-      title: t('Cancellations'),
-      url: "/manage-cancellation",
-      icon: "reservation",
-      isLast: false,
-      lastChild: false
-    },
-    {
-      id: "calendar",
-      title: t('Calendar View'),
-      url: "/calendar",
-      icon: "calendar",
-      isLast: false,
-      lastChild: false
-    },
-    {
-      id: "coupons",
-      title: t('Coupons'),
-      url: "/manage-coupon",
-      icon: "coupons",
-      isLast: false,
-      lastChild: false
-    },
-    {
       id: "user",
       title: t('User'),
       url: "/manage-user",
@@ -118,8 +118,15 @@ export default function SideDrawer(props) {
 
   ];
 
+  const permissions = JSON.parse(window.localStorage.getItem('roles')) || [];
   const filteredMenuList = menuList.filter((menuItem) => {
     if (storeOptions.length === 1 && storeOptions.includes('BILLING') && menuItem.id === 'theme') {
+      return false;
+    }
+    if (menuItem.id === 'location' && !permissions.includes("LOCATION:VIEW")) {
+      return false;
+    }
+    if (menuItem.id === 'user' && !permissions.includes("USER:VIEW")) {
       return false;
     }
     return true;
@@ -160,7 +167,7 @@ export default function SideDrawer(props) {
         <>
           <Box sx={{ display: { xs: "flex", md: "none" } }} >
             <Link
-              to={`/manage-location`}
+              to={`/inventory`}
             >
               <Logo />
             </Link>
