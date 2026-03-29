@@ -1,5 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import {
     Typography,
     Box,
@@ -8,14 +11,42 @@ import {
     AccordionSummary,
     AccordionDetails,
     Stack,
+    Button,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { AlertDialog } from '../../components/index';
+import { updateTableState } from '../Reservation/ManageReservation/manageReservationTableSlice';
+import { FLOW_TYPE } from '../../Utils/constants';
 
-const DailyReservationModal = ({ open, handleClose, date, roomBreakdown = [], daySummary = null }) => {
+const DailyReservationModal = ({ open, handleClose, date, hotelId, roomBreakdown = [], daySummary = null }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const hasBreakdown = Array.isArray(roomBreakdown) && roomBreakdown.length > 0;
+    const goToBlockReservation = (roomIdOptional) => {
+        if (!hotelId || !date) {
+            return;
+        }
+        const checkOut = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
+        dispatch(
+            updateTableState({
+                flow: FLOW_TYPE.NEW,
+                selectedReservationData: null,
+            })
+        );
+        navigate('/create-reservation', {
+            state: {
+                inventoryBlock: {
+                    hotelId,
+                    checkInDate: date,
+                    checkOutDate: checkOut,
+                    ...(roomIdOptional ? { roomId: roomIdOptional } : {}),
+                },
+            },
+        });
+        handleClose();
+    };
 
     return (
         <AlertDialog
@@ -133,6 +164,19 @@ const DailyReservationModal = ({ open, handleClose, date, roomBreakdown = [], da
                                                         </Typography>
                                                     </Box>
                                                 ))}
+                                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%', pt: 0.5 }}>
+                                                    <Button
+                                                        type="button"
+                                                        size="small"
+                                                        variant="text"
+                                                        color="primary"
+                                                        sx={{ fontWeight: 700, minWidth: 'auto' }}
+                                                        disabled={!hotelId || !date || row.availableRooms <= 0}
+                                                        onClick={() => goToBlockReservation(row.roomId)}
+                                                    >
+                                                        {t("Block")}
+                                                    </Button>
+                                                </Box>
                                             </Stack>
                                         </AccordionDetails>
                                     </Accordion>
@@ -147,6 +191,31 @@ const DailyReservationModal = ({ open, handleClose, date, roomBreakdown = [], da
                         {t("No room-type breakdown for this date (select a day in the loaded month).")}
                     </Typography>
                 )}
+                <Box
+                    sx={{
+                        mt: 2,
+                        pt: 2,
+                        borderTop: '1px solid #eef2f6',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        width: '100%',
+                    }}
+                >
+                    <Button
+                        type="button"
+                        variant="text"
+                        color="primary"
+                        sx={{ fontWeight: 700, minWidth: 'auto' }}
+                        disabled={
+                            !hotelId ||
+                            !date ||
+                            (daySummary != null && Number(daySummary.availableRooms) <= 0)
+                        }
+                        onClick={() => goToBlockReservation()}
+                    >
+                        {t("Block")}
+                    </Button>
+                </Box>
             </Box>
         </AlertDialog>
     );

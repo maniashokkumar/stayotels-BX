@@ -228,6 +228,7 @@ function CalendarView() {
                 open={modalData.open}
                 handleClose={() => setModalData((prev) => ({ ...prev, open: false }))}
                 date={modalData.date}
+                hotelId={selectedHotel}
                 roomBreakdown={modalData.roomBreakdown}
                 daySummary={modalData.daySummary}
             />

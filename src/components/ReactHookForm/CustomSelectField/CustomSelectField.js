@@ -25,13 +25,14 @@ function CustomSelectField({ id, label, values, control, handleCustomInputChange
           fieldState: { error },
           formState,
         }) => {
-
+          const selectValue =
+            values !== undefined ? (values ?? "") : (value ?? "");
           return (<FormControl variant={variant} className="form-control" fullWidth={fullWidth} error={error ? error : null} size={size || undefined}>
             <InputLabel id={id}>{label}</InputLabel>
             <SelectMUI
               className="select-input-field"
               id={id}
-              value={values}
+              value={selectValue}
               disabled={disabled ? true : false}
               onChange={e => {
                 if (!readOnly) {

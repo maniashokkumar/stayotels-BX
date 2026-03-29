@@ -242,6 +242,9 @@
   "Stock Management" : "Stock Management",
   "Inventory Management" : "Inventory Management",
   "Locked (Booking in progress)" : "Locked (Booking In Progress)",
+  "Block" : "Block",
+  "Block this room type" : "Block this room type",
+  "Selected hotel is not available for reservations." : "Selected hotel is not available for reservations.",
   "Pincode Validation Required" : "Pincode Validation Required",
 
   "Modify Theme" : "Modify Theme",

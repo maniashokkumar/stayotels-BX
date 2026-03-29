@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Breadcrumb, Loader } from "../../../components/index";
@@ -25,10 +25,10 @@ import dayjs from "dayjs";
 import { FLOW_TYPE } from "../../../Utils/constants";
 import "./CreateReservation.scss";
 import { CircularProgress } from "@mui/material";
-import { id } from "date-fns/locale";
 
 function CreateReservation() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const today = dayjs();
@@ -77,7 +77,7 @@ function CreateReservation() {
   const watchHotelId = watch("hotelId");
   const watchNoOfRooms = watch("noofRooms");
   const watchNoOfPersons = watch("cdnintnoOfPersons");
-
+  const pendingInventoryRoomIdRef = useRef(null);
   const onPageLoad = async () => {
     // fetchLookupOptions();
     //if (!lookup.role) {
@@ -111,6 +111,50 @@ function CreateReservation() {
       setPageLoader(false);
     }
   }, [selectedReservationData, lookup, showSessionPopup]);
+
+  useEffect(() => {
+    const block = location.state && location.state.inventoryBlock;
+    if (!block || flow === FLOW_TYPE.EDIT) return;
+    if (!hotelListData.length) return;
+    const { hotelId, checkInDate, checkOutDate, roomId } = block;
+    if (!hotelId || !checkInDate || !checkOutDate) return;
+    const hotelOk = hotelListData.some((h) => h.value === hotelId);
+    if (!hotelOk) {
+      dispatch(
+        showSnackbar({
+          type: "warning",
+          message: t("Selected hotel is not available for reservations."),
+        })
+      );
+      navigate("/create-reservation", { replace: true, state: {} });
+      return;
+    }
+    
+    setSelectedHotel(hotelId);
+    reset({
+      hotelId,
+      roomId: "",
+      checkInDate: dayjs(checkInDate),
+      checkOutDate: dayjs(checkOutDate),
+      cdnintnoOfPersons: "",
+      noofRooms: "",
+    });
+    pendingInventoryRoomIdRef.current = roomId || null;
+    navigate("/create-reservation", { replace: true, state: {} });
+  }, [location.state, hotelListData, flow, dispatch, navigate, reset, t]);
+
+  useEffect(() => {
+    const rid = pendingInventoryRoomIdRef.current;
+    if (!rid || !availableRoomsRaw.length) return;
+    const found = availableRoomsRaw.find(
+      (r) =>
+        String(r.roomId ?? "").toLowerCase() === String(rid).toLowerCase()
+    );
+    if (found) {
+      setValue("roomId", found.roomId, { shouldValidate: true, shouldDirty: true });
+    }
+    pendingInventoryRoomIdRef.current = null;
+  }, [availableRoomsRaw, setValue]);
 
   const fetchHotels = async () => {
     try {
