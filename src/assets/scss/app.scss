@@ -191,6 +191,15 @@ input:-webkit-autofill:active {
     background-image: url("../../assets/icons/reserve 1.svg");
   }
 
+  &.booking-history,
+  &.booking-database {
+    background-image: url("../../assets/icons/database.svg");
+  }
+
+  &.cancellations {
+    background-image: url("../../assets/icons/cancellation-calendar.svg");
+  }
+
   &.calendar {
     background-image: url("../../assets/icons/calendar.svg");
   }

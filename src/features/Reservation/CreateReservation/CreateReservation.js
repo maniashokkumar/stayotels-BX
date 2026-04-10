@@ -9,22 +9,36 @@ import {
   CustomSelectField,
   KeyBoardDatePicker,
   NumericInputComponent,
-  NumberComponent,
 } from "../../../components/ReactHookForm/index";
-import { Button } from "@mui/material";
-import { axiosPrService } from "../../../axios/axiosInstance";
+import {
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  IconButton,
+  MenuItem,
+  Step,
+  StepLabel,
+  Stepper,
+  TextField,
+  Tooltip,
+} from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { fetchLookupList, showSnackbar } from "../../../redux/reducer/appSlice";
 import { updateTableState } from "../../Reservation/ManageReservation/manageReservationTableSlice";
 import {
   createReservation,
-  updateReservation,
+  completeGuestBilling,
+  completeAddOns,
+  completePayments,
+  completeFinalize,
   hotelList,
   availableRoomsByHotel,
 } from "./CreateReservationApi";
 import dayjs from "dayjs";
 import { FLOW_TYPE } from "../../../Utils/constants";
 import "./CreateReservation.scss";
-import { CircularProgress } from "@mui/material";
+
 
 function CreateReservation() {
   const navigate = useNavigate();
@@ -42,6 +56,22 @@ function CreateReservation() {
   );
   const loginUser = useSelector((state) => state.loginReducer.user);
 
+  const CP_SOURCE_OPTIONS = [
+    { label: "Walk-in", value: "WALK_IN" },
+    { label: "Direct enquiry", value: "DIRECT_ENQUIRY" },
+    { label: "Phone", value: "PHONE" },
+    { label: "Email", value: "EMAIL" },
+    { label: "Other", value: "OTHER" },
+  ];
+  const WIZARD_STEP_LABELS = [
+    "Room block",
+    "Guest",
+    "Add-ons",
+    "Summary",
+    "Payments",
+  ];
+  const PAYMENT_METHODS = ["CASH", "UPI", "CARD", "BANK_TRANSFER", "OTHER"];
+
   const createReservationForm = {
     hotelId: "",
     roomId: "",
@@ -49,6 +79,8 @@ function CreateReservation() {
     noofRooms: "",
     checkInDate: "",
     checkOutDate: "",
+    cpSourceType: "WALK_IN",
+    sourceReference: "",
   };
 
   const {
@@ -71,6 +103,19 @@ function CreateReservation() {
   const [hotelListData, setHotelListData] = useState([]);
   const [formDate, setFormData] = useState({});
   const [isPriceAvailable, setIsPriceAvailable] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardMeta, setWizardMeta] = useState(null);
+  const [guestForm, setGuestForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+  });
+  const [addonRows, setAddonRows] = useState([{ label: "", unitPrice: "", quantity: "1" }]);
+  const [paymentRows, setPaymentRows] = useState([
+    { method: "CASH", amount: "", reference: "" },
+  ]);
+  const [markPaidFinalize, setMarkPaidFinalize] = useState(false);
 
   const watchCheckInDate = watch("checkInDate");
   const watchCheckOutDate = watch("checkOutDate");
@@ -78,6 +123,7 @@ function CreateReservation() {
   const watchNoOfRooms = watch("noofRooms");
   const watchNoOfPersons = watch("cdnintnoOfPersons");
   const pendingInventoryRoomIdRef = useRef(null);
+  const showWizard = flow === FLOW_TYPE.NEW;
   const onPageLoad = async () => {
     // fetchLookupOptions();
     //if (!lookup.role) {
@@ -106,6 +152,8 @@ function CreateReservation() {
         noofRooms: selectedReservationData.noOfRooms,
         checkInDate: selectedReservationData.checkIn,
         checkOutDate: selectedReservationData.checkOut,
+        cpSourceType: selectedReservationData.cpSourceType || "WALK_IN",
+        sourceReference: selectedReservationData.sourceReference || "",
       };
       reset(createReservationForm);
       setPageLoader(false);
@@ -138,6 +186,8 @@ function CreateReservation() {
       checkOutDate: dayjs(checkOutDate),
       cdnintnoOfPersons: "",
       noofRooms: "",
+      cpSourceType: "WALK_IN",
+      sourceReference: "",
     });
     pendingInventoryRoomIdRef.current = roomId || null;
     navigate("/create-reservation", { replace: true, state: {} });
@@ -155,6 +205,33 @@ function CreateReservation() {
     }
     pendingInventoryRoomIdRef.current = null;
   }, [availableRoomsRaw, setValue]);
+
+  useEffect(() => {
+    const cb = location.state && location.state.completeBooking;
+    if (!cb || !cb.reservationId) return;
+    dispatch(updateTableState({ flow: FLOW_TYPE.NEW, selectedReservationData: null }));
+    const c = cb.customer || {};
+    setGuestForm({
+      firstName: c.firstName || "",
+      lastName: c.lastName || "",
+      email: c.email || "",
+      phoneNumber: c.phoneNumber || "",
+    });
+    setWizardMeta({
+      reservationId: cb.reservationId,
+      orderId: cb.orderId,
+      totalCost: cb.totalCost,
+      checkIn: cb.checkIn,
+      checkOut: cb.checkOut,
+      noOfRooms: cb.noOfRooms,
+      noOfPersons: cb.noOfPersons,
+      hotelLabel: cb.hotels,
+      roomLabel: cb.rooms,
+    });
+    setWizardStep(1);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, dispatch, navigate, location.pathname]);
+
 
   const fetchHotels = async () => {
     try {
@@ -231,12 +308,13 @@ function CreateReservation() {
   //   }
   // };
 
-  const submitHandler = async (formData) => {
+  /** @param {'block_only' | 'continue'} mode - block_only: save and go to manage; continue: save and next step (Guest) */
+  const blockSubmit = async (formData, mode) => {
     const checkIn = dayjs(formData.checkInDate);
     const checkOut = dayjs(formData.checkOutDate);
-    
+
     if (!checkIn.isValid() || !checkOut.isValid()) return;
-    
+
     const loginUserObj = loginUser || {};
     const fullName = loginUserObj.name || "";
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -296,18 +374,61 @@ function CreateReservation() {
       isHotelBlocked: true,
       noofRooms: requestedRooms,
       cdnintnoOfPersons: enteredPersons,
+      cpSourceType: formData.cpSourceType || "WALK_IN",
+      sourceReference: formData.sourceReference || "",
     };
 
     setOnSumbitLoader(true);
     const response = await createReservation({ data: finalData, dispatch });
     setOnSumbitLoader(false);
 
-    if (response === "success") {
+    const createdOk =
+      response &&
+      (response.success === true || response === "success");
+    if (createdOk) {
       dispatch(updateTableState({ reservationCreated: true }));
-      dispatch(showSnackbar({ type: "success", message: `Reservation created successfully` }));
-      navigate("/manage-reservation");
+      dispatch(
+        showSnackbar({
+          type: "success",
+          message: t("Reservation created successfully"),
+        })
+      );
+      if (showWizard && mode === "continue") {
+        const hotelLabel =
+          hotelListData.find((h) => h.value === formData.hotelId)?.label || "";
+        const roomLabel =
+          roomOptions.find((r) => r.value === formData.roomId)?.label || "";
+        setWizardMeta({
+          ...response,
+          hotelLabel,
+          roomLabel,
+          noOfRooms: requestedRooms,
+          noOfPersons: enteredPersons,
+          checkIn: checkIn.toISOString(),
+          checkOut: checkOut.toISOString(),
+        });
+        const lu = loginUser || {};
+        const fullN = (lu.name || "").trim().split(/\s+/).filter(Boolean);
+        const gf = {
+          firstName: fullN[0] || "",
+          lastName: fullN.length > 1 ? fullN.slice(1).join(" ") : "",
+          email: lu.email || "",
+          phoneNumber: lu.phone || "",
+        };
+        let ph = gf.phoneNumber;
+        if (ph && typeof ph === "string" && ph.trim() && !ph.startsWith("+91")) {
+          ph = `+91${ph}`;
+        }
+        setGuestForm({ ...gf, phoneNumber: ph });
+        setWizardStep(1);
+      } else {
+        navigate("/manage-reservation");
+      }
     } else {
-      const errorMsg = typeof response === 'string' ? response : (response?.message || "Unable to create reservation");
+      const errorMsg =
+        typeof response === "string"
+          ? response
+          : response?.message || "Unable to create reservation";
       dispatch(showSnackbar({ type: "error", message: errorMsg }));
     }
   };
@@ -409,7 +530,146 @@ function CreateReservation() {
     setRoomOptions(roomOpts);
   }, [availableRoomsRaw, watchNoOfRooms]);
 
+
+  const formatInr = (n) => {
+    if (n == null || Number.isNaN(Number(n))) return "—";
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "INR",
+      }).format(Number(n));
+    } catch {
+      return String(n);
+    }
+  };
+
+  const computeSupplementFromRows = () =>
+    addonRows
+      .filter((row) => (row.label || "").trim().length > 0)
+      .reduce((sum, row) => {
+        const q = Math.max(1, parseInt(row.quantity, 10) || 1);
+        const p = Number(row.unitPrice) || 0;
+        return sum + p * q;
+      }, 0);
+
+  const handleGuestNext = async () => {
+    if (!wizardMeta?.reservationId) return;
+    let phone = guestForm.phoneNumber || "";
+    if (phone && !phone.startsWith("+91")) phone = `+91${phone}`;
+    setOnSumbitLoader(true);
+    const r = await completeGuestBilling({
+      body: {
+        reservationId: wizardMeta.reservationId,
+        firstName: guestForm.firstName,
+        lastName: guestForm.lastName,
+        email: guestForm.email,
+        phoneNumber: phone,
+      },
+      dispatch,
+    });
+    setOnSumbitLoader(false);
+    if (r) setWizardStep(2);
+  };
+
+  const handleAddOnsNext = async () => {
+    if (!wizardMeta?.reservationId) return;
+    const addOns = addonRows
+      .filter((row) => (row.label || "").trim().length > 0)
+      .map((row) => ({
+        label: row.label.trim(),
+        unitPrice: Number(row.unitPrice) || 0,
+        quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
+      }));
+    setOnSumbitLoader(true);
+    const r = await completeAddOns({
+      body: {
+        reservationId: wizardMeta.reservationId,
+        addOns,
+        supplementTotal: 0,
+      },
+      dispatch,
+    });
+    setOnSumbitLoader(false);
+    if (r) {
+      const sup =
+        typeof r.supplementTotal === "number"
+          ? r.supplementTotal
+          : computeSupplementFromRows();
+      setWizardMeta((m) =>
+        m ? { ...m, supplementTotal: sup } : m
+      );
+      setWizardStep(3);
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!wizardMeta?.reservationId) return;
+    const ledger = paymentRows
+      .filter((row) => (row.amount || "").toString().trim().length > 0)
+      .map((row) => ({
+        method: row.method || "CASH",
+        amount: Number(row.amount) || 0,
+        reference: row.reference || "",
+        paidAt: new Date().toISOString(),
+      }));
+    setOnSumbitLoader(true);
+    const payOk = await completePayments({
+      body: { reservationId: wizardMeta.reservationId, paymentLedger: ledger },
+      dispatch,
+    });
+    if (!payOk) {
+      setOnSumbitLoader(false);
+      return;
+    }
+    const fin = await completeFinalize({
+      body: {
+        reservationId: wizardMeta.reservationId,
+        markPaid: markPaidFinalize,
+      },
+      dispatch,
+    });
+    setOnSumbitLoader(false);
+    if (fin) {
+      dispatch(
+        showSnackbar({ type: "success", message: t("Booking confirmed") })
+      );
+      navigate("/manage-reservation");
+    }
+  };
+
+
   const hotelDisabled = isDisabled || !watchCheckInDate || !watchCheckOutDate;
+
+  const removeAddonRow = (idx) => {
+    setAddonRows((rows) => {
+      if (rows.length <= 1) {
+        return [{ label: "", unitPrice: "", quantity: "1" }];
+      }
+      return rows.filter((_, i) => i !== idx);
+    });
+  };
+
+  const renderWizardNavActions = (primaryButton) => (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "flex-end",
+        flexWrap: "wrap",
+        gap: 1,
+        alignItems: "center",
+      }}
+    >
+      <Button variant="text" onClick={() => navigate("/manage-reservation")}>
+        {t("Finish later")}
+      </Button>
+      {wizardStep >= 1 && (
+        <Button variant="text" onClick={() => setWizardStep((s) => s - 1)}>
+          {t("Back")}
+        </Button>
+      )}
+      {primaryButton}
+    </Box>
+  );
 
   return (
     <div className="createReservation-page page">
@@ -441,7 +701,339 @@ function CreateReservation() {
             pageLoaderCustomStyles={{ margin: "-20px" }}
           />
         )}
-        <form onSubmit={handleSubmit((data) => submitHandler(data))}>
+        {showWizard && (
+          <Stepper activeStep={wizardStep} alternativeLabel sx={{ mb: 2 }}>
+            {WIZARD_STEP_LABELS.map((label) => (
+              <Step key={label}>
+                <StepLabel>{t(label)}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        )}
+        {showWizard && wizardStep === 1 && wizardMeta && (
+          <Box sx={{ mb: 3 }} className="form-fields-block">
+            <TextField
+              fullWidth
+              margin="normal"
+              label={t("First name")}
+              value={guestForm.firstName}
+              onChange={(e) =>
+                setGuestForm((g) => ({ ...g, firstName: e.target.value }))
+              }
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label={t("Last name")}
+              value={guestForm.lastName}
+              onChange={(e) =>
+                setGuestForm((g) => ({ ...g, lastName: e.target.value }))
+              }
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label={t("Email")}
+              value={guestForm.email}
+              onChange={(e) =>
+                setGuestForm((g) => ({ ...g, email: e.target.value }))
+              }
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label={t("Phone")}
+              value={guestForm.phoneNumber}
+              onChange={(e) =>
+                setGuestForm((g) => ({ ...g, phoneNumber: e.target.value }))
+              }
+            />
+            <Box sx={{ mt: 2, width: "100%", flexBasis: "100%" }}>
+              {renderWizardNavActions(
+                <Button variant="contained" onClick={handleGuestNext} disabled={onSumbitLoader}>
+                  {onSumbitLoader ? t("Loading...") : t("Continue")}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        )}
+        {showWizard && wizardStep === 2 && wizardMeta && (
+          <Box sx={{ mb: 3 }}>
+            {addonRows.map((row, idx) => (
+              <Box
+                key={idx}
+                sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1, alignItems: "center" }}
+              >
+                <TextField
+                  label={t("Description")}
+                  value={row.label}
+                  onChange={(e) => {
+                    const next = [...addonRows];
+                    next[idx] = { ...next[idx], label: e.target.value };
+                    setAddonRows(next);
+                  }}
+                />
+                <TextField
+                  label={t("Amount")}
+                  type="number"
+                  value={row.unitPrice}
+                  onChange={(e) => {
+                    const next = [...addonRows];
+                    next[idx] = { ...next[idx], unitPrice: e.target.value };
+                    setAddonRows(next);
+                  }}
+                />
+                <TextField
+                  label={t("Qty")}
+                  type="number"
+                  value={row.quantity}
+                  onChange={(e) => {
+                    const next = [...addonRows];
+                    next[idx] = { ...next[idx], quantity: e.target.value };
+                    setAddonRows(next);
+                  }}
+                />
+                <Tooltip title={t("Remove line")}>
+                  <IconButton
+                    edge="end"
+                    aria-label={t("Remove line")}
+                    onClick={() => removeAddonRow(idx)}
+                    sx={{
+                      color: "#d32f2f",
+                      "&:hover": {
+                        backgroundColor: "rgba(211, 47, 47, 0.08)",
+                      },
+                    }}
+                  >
+                    <DeleteOutlineIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ))}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 1,
+                alignItems: "center",
+                mt: 2,
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  setAddonRows((rows) => [...rows, { label: "", unitPrice: "", quantity: "1" }])
+                }
+              >
+                {t("Add line")}
+              </Button>
+              {renderWizardNavActions(
+                <Button variant="contained" onClick={handleAddOnsNext} disabled={onSumbitLoader}>
+                  {onSumbitLoader ? t("Loading...") : t("Continue")}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        )}
+        {showWizard && wizardStep === 3 && wizardMeta && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+            }}
+          >
+            <Box sx={{ fontWeight: 700, mb: 2 }}>{t("Summary")}</Box>
+
+            <Box sx={{ fontWeight: 600, fontSize: 14, mb: 0.5 }}>
+              {t("Stay")}
+            </Box>
+            <Box sx={{ fontSize: 14, color: "text.secondary", mb: 1 }}>
+              {wizardMeta.hotelLabel || "—"} · {wizardMeta.roomLabel || "—"}
+            </Box>
+            <Box sx={{ fontSize: 14, mb: 0.5 }}>
+              {wizardMeta.checkIn
+                ? dayjs(wizardMeta.checkIn).format("D MMM YYYY")
+                : "—"}{" "}
+              →{" "}
+              {wizardMeta.checkOut
+                ? dayjs(wizardMeta.checkOut).format("D MMM YYYY")
+                : "—"}
+            </Box>
+            <Box sx={{ fontSize: 14, color: "text.secondary" }}>
+              {wizardMeta.noOfRooms ?? "—"} {t("room(s)")} · {wizardMeta.noOfPersons ?? "—"}{" "}
+              {t("guests")}
+            </Box>
+            <Box sx={{ fontSize: 14, mt: 1 }}>
+              {t("Order")}: #{wizardMeta.orderId} · {t("Reservation")}:{" "}
+              {wizardMeta.reservationId}
+            </Box>
+
+            <Box sx={{ fontWeight: 600, fontSize: 14, mt: 2, mb: 0.5 }}>
+              {t("Guest")}
+            </Box>
+            <Box sx={{ fontSize: 14 }}>
+              {guestForm.firstName} {guestForm.lastName}
+            </Box>
+            <Box sx={{ fontSize: 14, color: "text.secondary" }}>
+              {guestForm.email}
+            </Box>
+            <Box sx={{ fontSize: 14, color: "text.secondary" }}>
+              {guestForm.phoneNumber}
+            </Box>
+
+            <Box sx={{ fontWeight: 600, fontSize: 14, mt: 2, mb: 0.5 }}>
+              {t("Add-ons")}
+            </Box>
+            {addonRows.filter((row) => (row.label || "").trim()).length === 0 ? (
+              <Box sx={{ fontSize: 14, color: "text.secondary" }}>—</Box>
+            ) : (
+              addonRows
+                .filter((row) => (row.label || "").trim())
+                .map((row, idx) => {
+                  const q = Math.max(1, parseInt(row.quantity, 10) || 1);
+                  const p = Number(row.unitPrice) || 0;
+                  return (
+                    <Box key={idx} sx={{ fontSize: 14, mb: 0.5 }}>
+                      {row.label.trim()} × {q} @ {formatInr(p)} ={" "}
+                      {formatInr(p * q)}
+                    </Box>
+                  );
+                })
+            )}
+
+            <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid", borderColor: "divider" }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Box sx={{ fontSize: 14 }}>{t("Room subtotal")}</Box>
+                <Box sx={{ fontSize: 14, fontWeight: 600 }}>
+                  {formatInr(wizardMeta.totalCost)}
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Box sx={{ fontSize: 14 }}>{t("Add-ons")}</Box>
+                <Box sx={{ fontSize: 14, fontWeight: 600 }}>
+                  {formatInr(
+                    wizardMeta.supplementTotal != null
+                      ? wizardMeta.supplementTotal
+                      : computeSupplementFromRows()
+                  )}
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Box sx={{ fontSize: 15, fontWeight: 700 }}>{t("Grand total")}</Box>
+                <Box sx={{ fontSize: 15, fontWeight: 700 }}>
+                  {formatInr(
+                    Number(wizardMeta.totalCost || 0) +
+                      Number(
+                        wizardMeta.supplementTotal != null
+                          ? wizardMeta.supplementTotal
+                          : computeSupplementFromRows()
+                      )
+                  )}
+                </Box>
+              </Box>
+            </Box>
+
+            <Box sx={{ mt: 2 }}>
+              {renderWizardNavActions(
+                <Button variant="contained" onClick={() => setWizardStep(4)}>
+                  {t("Continue")}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        )}
+        {showWizard && wizardStep === 4 && wizardMeta && (
+          <Box sx={{ mb: 3 }}>
+            {paymentRows.map((row, idx) => (
+              <Box
+                key={idx}
+                sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1, alignItems: "center" }}
+              >
+                <TextField select label={t("Method")} value={row.method} onChange={(e) => {
+                  const next = [...paymentRows];
+                  next[idx] = { ...next[idx], method: e.target.value };
+                  setPaymentRows(next);
+                }} sx={{ minWidth: 160 }}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <MenuItem key={m} value={m}>{m}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label={t("Amount")}
+                  type="number"
+                  value={row.amount}
+                  onChange={(e) => {
+                    const next = [...paymentRows];
+                    next[idx] = { ...next[idx], amount: e.target.value };
+                    setPaymentRows(next);
+                  }}
+                />
+                <TextField
+                  label={t("Reference")}
+                  value={row.reference}
+                  onChange={(e) => {
+                    const next = [...paymentRows];
+                    next[idx] = { ...next[idx], reference: e.target.value };
+                    setPaymentRows(next);
+                  }}
+                />
+              </Box>
+            ))}
+            <FormControlLabel
+              sx={{ display: "block", mt: 2 }}
+              control={
+                <Checkbox
+                  checked={markPaidFinalize}
+                  onChange={(e) => setMarkPaidFinalize(e.target.checked)}
+                />
+              }
+              label={t("Mark reservation as paid")}
+            />
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 1,
+                alignItems: "center",
+                mt: 2,
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  setPaymentRows((rows) => [...rows, { method: "CASH", amount: "", reference: "" }])
+                }
+              >
+                {t("Add payment")}
+              </Button>
+              {renderWizardNavActions(
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleFinalize}
+                  disabled={onSumbitLoader}
+                >
+                  {onSumbitLoader ? t("Loading...") : t("Finalize booking")}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        )}
+        <form
+          onSubmit={handleSubmit((data) => {
+            if (!showWizard) {
+              blockSubmit(data, "block_only");
+            }
+          })}
+          style={{
+            display: !showWizard || wizardStep === 0 ? "block" : "none",
+          }}
+        >
           <div className="form-fields-block">
             <KeyBoardDatePicker
               id="checkInDate"
@@ -487,6 +1079,23 @@ function CreateReservation() {
                 rules={{ required: "Room Name is required" }}
               />
             )}
+
+            <CustomSelectField
+              id="cpSourceType"
+              label={t("Booking source")}
+              control={control}
+              variant="outlined"
+              options={CP_SOURCE_OPTIONS}
+              disabled={isDisabled}
+            />
+
+            <InputField
+              id="sourceReference"
+              label={t("Source reference (optional)")}
+              control={control}
+              variant="outlined"
+              disabled={isDisabled}
+            />
 
             <NumericInputComponent
               id="cdnintnoOfPersons"
@@ -573,18 +1182,55 @@ function CreateReservation() {
               }}
             />
           </div>
-          <div style={{ display: "flex", justifyContent: "right" }}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              sx={{ mt: 2 }}
-              style={{ float: "right", marginRight: "0.0rem" }}
-              className="submit-button"
-              disabled={onSumbitLoader ? true : false}
-            >
-              {onSumbitLoader ? t("Loading...") : "Create"}
-            </Button>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            {showWizard && wizardStep === 0 ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  color="primary"
+                  sx={{ mt: 2 }}
+                  className="submit-button"
+                  disabled={onSumbitLoader}
+                  onClick={handleSubmit((data) => blockSubmit(data, "block_only"))}
+                >
+                  {onSumbitLoader ? t("Loading...") : t("Block")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="contained"
+                  color="primary"
+                  sx={{ mt: 2 }}
+                  className="submit-button"
+                  disabled={onSumbitLoader}
+                  onClick={handleSubmit((data) =>
+                    blockSubmit(data, "continue")
+                  )}
+                >
+                  {onSumbitLoader ? t("Loading...") : t("Block & continue")}
+                </Button>
+              </>
+            ) : (
+              !showWizard && (
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  sx={{ mt: 2 }}
+                  className="submit-button"
+                  disabled={onSumbitLoader}
+                >
+                  {onSumbitLoader ? t("Loading...") : t("Create")}
+                </Button>
+              )
+            )}
           </div>
         </form>
       </div>

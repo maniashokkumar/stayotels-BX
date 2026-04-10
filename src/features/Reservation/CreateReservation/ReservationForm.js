@@ -141,7 +141,10 @@ function ReservationForm({ priceDetails, priceFormData }) {
     //    console.log(response, "response");
     setOnSumbitLoader(false);
 
-    if (response === "success") {
+    const createdOk =
+      response &&
+      (response.success === true || response === "success");
+    if (createdOk) {
       dispatch(updateTableState({ reservationCreated: true }));
       dispatch(
         showSnackbar({
@@ -151,10 +154,14 @@ function ReservationForm({ priceDetails, priceFormData }) {
       );
       navigate("/manage-reservation");
     } else {
+      const msg =
+        typeof response === "string"
+          ? response
+          : response?.message || "Unable to create reservation";
       dispatch(
         showSnackbar({
           type: "error",
-          message: response || "Unable to create reservation",
+          message: msg,
         })
       );
     }

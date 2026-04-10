@@ -45,7 +45,8 @@ export const CRUD_ACTION = {
   DELETE: "DELETE",
   EDIT: "EDIT",
   CREATE: "CREATE",
-  VIEW: "VIEW"
+  VIEW: "VIEW",
+  COMPLETE_BOOKING: "COMPLETE_BOOKING"
 }
 
 export let AMENITIES_ID = [];

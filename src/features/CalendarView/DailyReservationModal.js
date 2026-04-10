@@ -75,6 +75,23 @@ const DailyReservationModal = ({ open, handleClose, date, hotelId, roomBreakdown
                                 <strong>{t("Locked (Booking in progress)")}:</strong> {daySummary.lockedRooms}
                             </Typography>
                         )}
+                        {!hasBreakdown && (
+                            <Button
+                                type="button"
+                                size="small"
+                                variant="text"
+                                color="primary"
+                                sx={{ fontWeight: 700, minWidth: 'auto', ml: { xs: 0, sm: 'auto' } }}
+                                disabled={
+                                    !hotelId ||
+                                    !date ||
+                                    Number(daySummary.availableRooms) <= 0
+                                }
+                                onClick={() => goToBlockReservation()}
+                            >
+                                {t("Block")}
+                            </Button>
+                        )}
                     </Box>
                 )}
 
@@ -191,31 +208,6 @@ const DailyReservationModal = ({ open, handleClose, date, hotelId, roomBreakdown
                         {t("No room-type breakdown for this date (select a day in the loaded month).")}
                     </Typography>
                 )}
-                <Box
-                    sx={{
-                        mt: 2,
-                        pt: 2,
-                        borderTop: '1px solid #eef2f6',
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        width: '100%',
-                    }}
-                >
-                    <Button
-                        type="button"
-                        variant="text"
-                        color="primary"
-                        sx={{ fontWeight: 700, minWidth: 'auto' }}
-                        disabled={
-                            !hotelId ||
-                            !date ||
-                            (daySummary != null && Number(daySummary.availableRooms) <= 0)
-                        }
-                        onClick={() => goToBlockReservation()}
-                    >
-                        {t("Block")}
-                    </Button>
-                </Box>
             </Box>
         </AlertDialog>
     );

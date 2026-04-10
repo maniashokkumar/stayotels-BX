@@ -34,23 +34,26 @@ export const fetchCancellationList = createAsyncThunk('/fetchManageCancellationL
         });
 });
 
-export const updateRefundDetails = createAsyncThunk('/updateRefundDetails', async ({ id, data }, { dispatch }) => {
-    return await axiosPrService.post(`/reservation/reservation/update`, {
-        reservationId: id,
-        ...data
-    }, {}, { dispatch })
-        .then(res => {
-            if (res.status === 200) {
-                dispatch(showSnackbar({ type: "success", message: "Refund details updated successfully" }));
-                return { id, data };
-            } else {
-                dispatch(showSnackbar({ type: "error", message: "Failed to update refund details" }));
-                return null;
-            }
-        }).catch(e => {
-            dispatch(showSnackbar({ type: "error", message: e.message }));
-            return null;
+export const updateRefundDetails = createAsyncThunk('/updateRefundDetails', async ({ id, refundStatus }, { dispatch, getState }) => {
+    try {
+        const res = await axiosPrService.post('/reservation/update-refund-status', {
+            reservationId: id,
+            refundStatus,
         });
+        if (res.status === 200) {
+            dispatch(showSnackbar({ type: 'success', message: 'Refund status updated successfully' }));
+            const prev = getState().manageCancellationTableReducer.lastCancellationSearch;
+            dispatch(fetchCancellationList(prev || { data: {}, params: {} }));
+            return { id, refundStatus };
+        }
+        const errMsg = typeof res.data === 'string' ? res.data : 'Failed to update refund status';
+        dispatch(showSnackbar({ type: 'error', message: errMsg }));
+        return null;
+    } catch (e) {
+        const msg = e.response?.data && typeof e.response.data === 'string' ? e.response.data : (e.message || 'Request failed');
+        dispatch(showSnackbar({ type: 'error', message: msg }));
+        return null;
+    }
 });
 
 const initialState = {
@@ -63,6 +66,7 @@ const initialState = {
     sortBy: "cancelledAt",
     sortKey: "desc",
     appliedFilterList: [],
+    lastCancellationSearch: { data: {}, params: {} },
 };
 
 export const manageCancellationTableSlice = createSlice({
@@ -76,8 +80,11 @@ export const manageCancellationTableSlice = createSlice({
         },
     },
     extraReducers: {
-        [fetchCancellationList.pending]: (state) => {
+        [fetchCancellationList.pending]: (state, action) => {
             state.loading = true;
+            if (action.meta?.arg) {
+                state.lastCancellationSearch = action.meta.arg;
+            }
         },
         [fetchCancellationList.fulfilled]: (state, action) => {
             state.loading = false;
@@ -93,7 +100,7 @@ export const manageCancellationTableSlice = createSlice({
             if (action.payload) {
                 const index = state.data.findIndex(item => item.reservationId === action.payload.id);
                 if (index !== -1) {
-                    state.data[index] = { ...state.data[index], ...action.payload.data };
+                    state.data[index] = { ...state.data[index], refundStatus: action.payload.refundStatus };
                 }
             }
         }

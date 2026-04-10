@@ -9,8 +9,19 @@ import Box from '@mui/material/Box';
 
 import './Breadcrumb.scss';
 
-function Breadcrumb({ pageTitle, buttonList, breadcrumbList, breadCrumButtonClickHandler, rmMargin, className }) {
+function Breadcrumb({
+  pageTitle,
+  buttonList = [],
+  breadcrumbList = [],
+  breadCrumButtonClickHandler,
+  rmMargin,
+  className,
+  hideBreadcrumb = false,
+}) {
   const navigate = useNavigate();
+  const crumbs = hideBreadcrumb ? [] : breadcrumbList;
+  const showCrumbs = Array.isArray(crumbs) && crumbs.length > 0;
+  const showTitleRow = Boolean(pageTitle) || (Array.isArray(buttonList) && buttonList.length > 0);
 
   return (
     <>
@@ -18,49 +29,66 @@ function Breadcrumb({ pageTitle, buttonList, breadcrumbList, breadCrumButtonClic
         <Box
           component="div"
           className={`breadcrumb-wrapper${className ? ` ${className}` : ''}`}
-          sx={{ marginBottom: rmMargin ? 0 : '15px' }}>
-          <div>
-            {pageTitle && <h2 className="page-title">{pageTitle}</h2>}
-            {breadcrumbList && breadcrumbList.length > 0 &&
+          sx={{ marginBottom: rmMargin ? 0 : '15px' }}
+        >
+          <Box className="breadcrumb-inner">
+            {showCrumbs ? (
               <Breadcrumbs
                 separator={<NavigateNextIcon fontSize="small" className="navigator" />}
                 aria-label="breadcrumb"
-                className="breadcrumb"
+                className="breadcrumb breadcrumb--above-title"
               >
-                {breadcrumbList.map((item, i) => {
-                  return (<Link
-                    underline="hover"
-                    key={i + item.url}
-                    color="inherit"
-                    onClick={() => { navigate(item.url) }}
-                  >{item.title}</Link>
-                  )
+                {crumbs.map((item, i) => {
+                  return (
+                    <Link
+                      underline="hover"
+                      key={i + item.url}
+                      color="inherit"
+                      onClick={() => {
+                        navigate(item.url);
+                      }}
+                    >
+                      {item.title}
+                    </Link>
+                  );
                 })}
               </Breadcrumbs>
-            }
-          </div>
-          {buttonList && buttonList.length > 0 &&
-            <div className="button-list-wrapper">
-              {buttonList.map((item, i) => {
-                return (
-                  <>
-                  {/* {item.url==="download-xlsx" && 
-                      <a href={ProductTemplateFile} download="ProductTemplateFile" style={{'text-decoration':'none'}}  target='_blank'>
-                        <Button key={i + item.text} variant={item.variant ? item.variant : "outlined"} onClick={(e) => { breadCrumButtonClickHandler(e, item) }}>{item.text}</Button>
-                      </a>
-                  } */}
-                 {item.url!=="download-xlsx" && 
-                    <>&nbsp;<Button key={i + item.text} variant={item.variant ? item.variant : "outlined"} onClick={(e) => { breadCrumButtonClickHandler(e, item) }}>{item.text}</Button></>
-                  }
-                 </>
-                )
-              })}
-            </div>
-          }
+            ) : null}
+            {showTitleRow ? (
+              <Box
+                className={`breadcrumb-title-actions${
+                  pageTitle ? '' : ' breadcrumb-title-actions--actions-only'
+                }`}
+              >
+                {pageTitle ? <h2 className="page-title">{pageTitle}</h2> : null}
+                {buttonList && buttonList.length > 0 ? (
+                  <div className="button-list-wrapper">
+                    {buttonList.map((item, i) => {
+                      if (item.url === 'download-xlsx') return null;
+                      return (
+                        <Button
+                          key={`${item.url}-${i}`}
+                          variant={item.variant ? item.variant : 'outlined'}
+                          size="medium"
+                          onClick={(e) => {
+                            if (typeof breadCrumButtonClickHandler === 'function') {
+                              breadCrumButtonClickHandler(e, item);
+                            }
+                          }}
+                        >
+                          {item.text}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </Box>
+            ) : null}
+          </Box>
         </Box>
       </Stack>
     </>
-  )
+  );
 }
 
 export default Breadcrumb;

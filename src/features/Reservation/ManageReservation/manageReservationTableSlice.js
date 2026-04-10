@@ -9,7 +9,9 @@ export const fetchReservationList = createAsyncThunk('/fetchManageReservationLis
   params.page = params.page + 1;
   let result = { total: 0, data: [] };
 
-  return await axiosPrService.post('/reservation/search/reservation', data, { params }, { dispatch })
+  /** Manage Reservation = CP channel; include soft-deleted rows so “Cancel” (admin delete) still appears with status label. */
+  const body = { ...data, salesChannelexacis: 'CONTROL_PANEL', includeSoftDeleted: true };
+  return await axiosPrService.post('/reservation/search/reservation', body, { params }, { dispatch })
     .then(res => {
       console.log("reservation list >>>>>>", res);
       if (res.status === 200 && Array.isArray(res.data)) {

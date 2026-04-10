@@ -20,13 +20,110 @@ export const createReservation = async ({ data, dispatch }) => {
   }
 };
 
+export const completeGuestBilling = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/completion/guest-billing', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg = typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to save guest details';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    dispatch(showSnackbar({ type: 'error', message: e.message || 'Server error' }));
+    return null;
+  }
+};
+
+export const completeAddOns = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/completion/add-ons', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg = typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to save add-ons';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    dispatch(showSnackbar({ type: 'error', message: e.message || 'Server error' }));
+    return null;
+  }
+};
+
+export const completePayments = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/completion/payments', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg = typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to save payments';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    dispatch(showSnackbar({ type: 'error', message: e.message || 'Server error' }));
+    return null;
+  }
+};
+
+/** Cancellation or amendment refund bookkeeping (RESERVATION:EDIT). */
+export const updateReservationRefundStatus = async ({ reservationId, refundStatus, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/update-refund-status', {
+      reservationId,
+      refundStatus,
+    });
+    if (res.status === 200) {
+      dispatch(showSnackbar({ type: 'success', message: 'Refund status updated successfully' }));
+      return true;
+    }
+    const errMsg = typeof res.data === 'string' ? res.data : 'Failed to update refund status';
+    dispatch(showSnackbar({ type: 'error', message: errMsg }));
+    return false;
+  } catch (e) {
+    const msg =
+      (e.response && typeof e.response.data === 'string' && e.response.data) ||
+      e.message ||
+      'Request failed';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return false;
+  }
+};
+
+/** Record a single payment on blocked/confirmed reservations (no overpayment). */
+export const collectReservationPayment = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/payment/collect', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg =
+      typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to record payment';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    const msg =
+      (e.response && typeof e.response.data === 'string' && e.response.data) ||
+      e.response?.data?.message ||
+      e.message ||
+      'Server error';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  }
+};
+
+export const completeFinalize = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/completion/finalize', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg = typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to finalize';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    dispatch(showSnackbar({ type: 'error', message: e.message || 'Server error' }));
+    return null;
+  }
+};
+
 export const updateReservation = ({ data, reservationId, dispatch }) => {
   return axiosPrService.post(`reservation/reservation/${reservationId}/update`, data)
     .then(res => {
       let result = ""
       if (res.status === 200) {
-        if (res.data === "Success") {
-          result = res.data
+        const msg = typeof res.data === 'string' ? res.data : '';
+        if (msg === "Success" || /updated successfully/i.test(msg)) {
+          result = "Success";
           return result
         } else {
           console.log('else')
@@ -47,9 +144,7 @@ export const hotelList = ({ id, data, dispatch }) => {
   return axiosPrService.post(`/master/search/hotels?perPage=100`,{})
     .then(res => {
       console.log("data",res.data)
-      // console.log("res dataaaaaa usecase:: " + res);
       if (res.data.status === 401) {
-        //handleUnauthorized(dispatch);
         return null;
       }
       else {

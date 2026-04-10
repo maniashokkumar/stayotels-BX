@@ -21,30 +21,22 @@ function ManageReservaton() {
   return (
     <div className={"manage-reservation-page page"}>
       <Breadcrumb
-        pageTitle={t("Manage Reservation")}
-        buttonList={          
-        userPermission !== null && userPermission.includes("RESERVATION:ADD")
-          ? 
-          [{
-            variant: "contained",
-            text: t("Create Reservation"),
-            url: "/create-reservation"
-          }
-        ]  : []
-    }
-        breadcrumbList={
-           [{
-              title: t("Home"),
-              url: "/",
-            },
-            {
-              title: t("Reservation"),
-              url: "/manage-reservation",
-            }
-          ]
+        buttonList={
+          userPermission !== null && userPermission.includes("RESERVATION:ADD")
+            ? [
+                {
+                  variant: "contained",
+                  text: t("Create Reservation"),
+                  url: "/create-reservation",
+                },
+              ]
+            : []
         }
+        breadcrumbList={[
+          { title: t('Home'), url: '/' },
+          { title: t('Reservation'), url: '/manage-reservation' },
+        ]}
         breadCrumButtonClickHandler={breadCrumButtonClickHandler}
-        hideBreadcrumb={true}
       />
       <ManageReservationTable />
     </div>

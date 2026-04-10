@@ -52,10 +52,18 @@ export default function SideDrawer(props) {
       lastChild: false
     },
     {
+      id: "booking-database",
+      title: t('Booking Database'),
+      url: "/booking-database",
+      icon: "booking-database",
+      isLast: false,
+      lastChild: false
+    },
+    {
       id: "cancellations",
       title: t('Cancellations'),
       url: "/manage-cancellation",
-      icon: "reservation",
+      icon: "cancellations",
       isLast: false,
       lastChild: false
     },

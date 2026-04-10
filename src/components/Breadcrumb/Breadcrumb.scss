@@ -1,7 +1,29 @@
 .breadcrumb-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: block;
+  width: 100%;
+
+  .breadcrumb-inner {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .breadcrumb--above-title {
+    padding: 2px 0 8px;
+  }
+
+  .breadcrumb-title-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 2px;
+    min-width: 0;
+  }
+
+  .breadcrumb-title-actions--actions-only {
+    justify-content: flex-end;
+  }
 
   .breadcrumb {
     ol {
@@ -44,24 +66,46 @@
   }
 
   .button-list-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
     button {
       text-transform: inherit;
     }
   }
 
   .page-title {
-    margin: 0 0 8px 0;
+    margin: 0;
     font-weight: 600;
     font-family: "Rubik", sans-serif;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+    line-height: 1.25;
     color: #1e293b;
     letter-spacing: -0.02em;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  @media (max-width: 360px) {
+    .breadcrumb-title-actions {
+      flex-wrap: wrap;
+    }
+
+    .button-list-wrapper {
+      width: 100%;
+      justify-content: flex-end;
+    }
   }
 }
 
 /* Inventory & similar pages: title hidden, tighter breadcrumb-only header */
 .breadcrumb-wrapper.breadcrumb-wrapper--trail-only {
-  align-items: flex-start;
+  .breadcrumb-title-actions {
+    display: none;
+  }
 
   .page-title {
     display: none;

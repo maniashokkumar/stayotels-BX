@@ -216,7 +216,8 @@ function MUIDataTable({ tableClassName, title, data, columns, options, loading, 
     ...col,
     options: {
       ...col.options,
-      ...((col.name !== 'action' && col.name !== 'dataId' && col.name !== "avatarPath" && col.name !== "list-dataset") && {
+      ...((col.name !== 'action' && col.name !== 'dataId' && col.name !== "avatarPath" && col.name !== "list-dataset"
+        && typeof col.options?.customBodyRender !== 'function') && {
         customBodyRenderLite: (dataIndex) => {
           console.log(`Rendering column: ${col.name} at dataIndex: ${dataIndex}`);
           const value = data[dataIndex]?.[col.name];

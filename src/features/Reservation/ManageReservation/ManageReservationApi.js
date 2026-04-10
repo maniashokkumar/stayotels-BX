@@ -44,6 +44,30 @@ export const fetchLookupOptionsSearch = (
     });
 };
 
+/** Cancel booking (status CANCELLED); reservation row stays in DB for lists and refunds. */
+export const cancelReservationFromControlPanel = ({ reservationId }, dispatch) => {
+  return axiosPrService
+    .post('/reservation/control-panel/cancel', { reservationId })
+    .then((res) => {
+      if (res.status === 200 && res.data?.success) {
+        dispatch(showSnackbar({ type: 'success', message: 'Reservation cancelled' }));
+        return true;
+      }
+      const msg =
+        typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to cancel reservation';
+      dispatch(showSnackbar({ type: 'error', message: msg }));
+      return false;
+    })
+    .catch((e) => {
+      const msg =
+        (e.response && typeof e.response.data === 'string' && e.response.data) ||
+        e.message ||
+        'Request failed';
+      dispatch(showSnackbar({ type: 'error', message: msg }));
+      return false;
+    });
+};
+
 export const deleteReservation = ({ reservationId }, data, dispatch) => {
   return axiosPrService.post(`/reservation/reservation/${reservationId}/update`, data)
     .then(res => {

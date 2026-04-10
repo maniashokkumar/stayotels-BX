@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { TextField, MenuItem, Select, FormControl, IconButton, Tooltip, Stack } from '@mui/material';
+import { MenuItem, Select, FormControl, InputLabel, IconButton, Tooltip, Stack, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -19,14 +19,27 @@ function ManageCancellationTable() {
     const [editRecords, setEditRecords] = useState({});
     const [editingRowId, setEditingRowId] = useState(null);
 
+    const refundStatusLabel = (code) => {
+        const c = (code || 'PENDING').toUpperCase();
+        if (c === 'PROCESSED' || c === 'COMPLETED') return t('Refund processed');
+        if (c === 'NOT_APPLICABLE') return t('No Refund Needed');
+        return t('Pending');
+    };
+
+    /** Single “refund done” value in DB/UI; COMPLETED is legacy only. */
+    const normalizeRefundStatusForEdit = (code) => {
+        const c = (code || 'PENDING').toUpperCase();
+        if (c === 'COMPLETED') return 'PROCESSED';
+        return code || 'PENDING';
+    };
+
     const handleEditStart = (row) => {
         setEditingRowId(row.reservationId);
         setEditRecords(prev => ({
             ...prev,
             [row.reservationId]: {
-                refundAmount: row.refundAmount,
-                refundStatus: row.refundStatus || "PENDING"
-            }
+                refundStatus: normalizeRefundStatusForEdit(row.refundStatus),
+            },
         }));
     };
 
@@ -44,10 +57,16 @@ function ManageCancellationTable() {
         }));
     };
 
-    const handleSave = (id) => {
-        const updatedData = editRecords[id];
-        if (updatedData) {
-            dispatch(updateRefundDetails({ id, data: updatedData }));
+    const rowAtMeta = (tableMeta) => {
+        const idx = tableMeta.dataIndex != null ? tableMeta.dataIndex : tableMeta.rowIndex;
+        return data[idx];
+    };
+
+    const handleSave = async (id) => {
+        const rec = editRecords[id];
+        if (rec?.refundStatus == null) return;
+        const action = await dispatch(updateRefundDetails({ id, refundStatus: rec.refundStatus }));
+        if (updateRefundDetails.fulfilled.match(action) && action.payload != null) {
             setEditingRowId(null);
         }
     };
@@ -88,24 +107,7 @@ function ManageCancellationTable() {
             options: {
                 filter: false,
                 sort: true,
-                customBodyRender: (value, tableMeta) => {
-                    const row = data[tableMeta.rowIndex];
-                    const isEditing = editingRowId === row.reservationId;
-
-                    if (isEditing) {
-                        const editValue = editRecords[row.reservationId]?.refundAmount ?? value;
-                        return (
-                            <TextField
-                                size="small"
-                                type="number"
-                                value={editValue}
-                                onChange={(e) => handleLocalChange(row.reservationId, 'refundAmount', e.target.value)}
-                                sx={{ width: 100 }}
-                            />
-                        );
-                    }
-                    return `₹${value?.toFixed(2)}`;
-                }
+                customBodyRender: (value) => `₹${value != null ? Number(value).toFixed(2) : '0.00'}`,
             }
         },
         {
@@ -115,25 +117,39 @@ function ManageCancellationTable() {
                 filter: false,
                 sort: true,
                 customBodyRender: (value, tableMeta) => {
-                    const row = data[tableMeta.rowIndex];
+                    const row = rowAtMeta(tableMeta);
+                    if (!row) return '';
                     const isEditing = editingRowId === row.reservationId;
 
                     if (isEditing) {
-                        const editValue = editRecords[row.reservationId]?.refundStatus ?? value ?? "PENDING";
+                        const editValue =
+                            editRecords[row.reservationId]?.refundStatus
+                            ?? normalizeRefundStatusForEdit(value);
                         return (
-                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <FormControl
+                                size="small"
+                                sx={{ minWidth: 160 }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                            >
+                                <InputLabel id={`refund-status-${row.reservationId}`}>{t('Refund status')}</InputLabel>
                                 <Select
+                                    labelId={`refund-status-${row.reservationId}`}
+                                    label={t('Refund status')}
                                     value={editValue}
                                     onChange={(e) => handleLocalChange(row.reservationId, 'refundStatus', e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    MenuProps={{ disableScrollLock: true, PaperProps: { style: { zIndex: 2000 } } }}
                                 >
-                                    <MenuItem value="PENDING">{t("Pending")}</MenuItem>
-                                    <MenuItem value="COMPLETED">{t("Done")}</MenuItem>
-                                    <MenuItem value="NOT_APPLICABLE">{t("No Refund Needed")}</MenuItem>
+                                    <MenuItem value="PENDING">{t('Pending')}</MenuItem>
+                                    <MenuItem value="PROCESSED">{t('Refund processed')}</MenuItem>
+                                    <MenuItem value="NOT_APPLICABLE">{t('No Refund Needed')}</MenuItem>
                                 </Select>
                             </FormControl>
                         );
                     }
-                    return value || "PENDING";
+                    return <Typography variant="body2" component="span">{refundStatusLabel(value)}</Typography>;
                 }
             }
         },
@@ -144,19 +160,32 @@ function ManageCancellationTable() {
                 filter: false,
                 sort: false,
                 customBodyRender: (value, tableMeta) => {
-                    const row = data[tableMeta.rowIndex];
+                    const row = rowAtMeta(tableMeta);
+                    if (!row) return '';
                     const isEditing = editingRowId === row.reservationId;
 
                     if (isEditing) {
                         return (
-                            <Stack direction="row" spacing={1}>
+                            <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
                                 <Tooltip title={t("Save")}>
-                                    <IconButton color="primary" onClick={() => handleSave(row.reservationId)}>
+                                    <IconButton
+                                        color="primary"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSave(row.reservationId);
+                                        }}
+                                    >
                                         <SaveIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
                                 <Tooltip title={t("Cancel")}>
-                                    <IconButton color="error" onClick={handleCancelEdit}>
+                                    <IconButton
+                                        color="error"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelEdit();
+                                        }}
+                                    >
                                         <CancelIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
@@ -166,7 +195,12 @@ function ManageCancellationTable() {
 
                     return (
                         <Tooltip title={t("Edit")}>
-                            <IconButton onClick={() => handleEditStart(row)}>
+                            <IconButton
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditStart(row);
+                                }}
+                            >
                                 <EditIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
