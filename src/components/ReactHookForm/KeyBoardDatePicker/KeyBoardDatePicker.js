@@ -70,6 +70,8 @@ function KeyBoardDatePicker({
   fullWidth = true,
   disabled,
   disablePast,
+  minDate,
+  size,
 }) {
   return (
     <div className="form-field">
@@ -87,6 +89,7 @@ function KeyBoardDatePicker({
               value={value}
               label={label}
               disablePast={disablePast}
+              minDate={minDate}
               format="MM/dd/yyyy"
               InputLabelProps={{ shrink: true, required: isRequired }}
               onChange={onChange}
@@ -96,6 +99,7 @@ function KeyBoardDatePicker({
                   {...params}
                   variant={variant}
                   fullWidth={fullWidth}
+                  size={size}
                   error={!!error} 
                   helperText={error ? error.message : null} 
                   sx={{

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -14,16 +14,21 @@ import {
   Box,
   Button,
   Checkbox,
+  FormControl,
   FormControlLabel,
   IconButton,
+  InputLabel,
   MenuItem,
+  Select,
   Step,
   StepLabel,
   Stepper,
   TextField,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import AddIcon from "@mui/icons-material/Add";
 import { fetchLookupList, showSnackbar } from "../../../redux/reducer/appSlice";
 import { updateTableState } from "../../Reservation/ManageReservation/manageReservationTableSlice";
 import {
@@ -77,8 +82,8 @@ function CreateReservation() {
     roomId: "",
     cdnintnoOfPersons: "",
     noofRooms: "",
-    checkInDate: "",
-    checkOutDate: "",
+    checkInDate: today,
+    checkOutDate: today.add(1, "day"),
     cpSourceType: "WALK_IN",
     sourceReference: "",
   };
@@ -86,8 +91,10 @@ function CreateReservation() {
   const {
     handleSubmit,
     control,
+    register,
     reset,
     setValue,
+    getValues,
     watch,
     setError,
     clearErrors,
@@ -116,13 +123,24 @@ function CreateReservation() {
     { method: "CASH", amount: "", reference: "" },
   ]);
   const [markPaidFinalize, setMarkPaidFinalize] = useState(false);
+  const [roomLineRows, setRoomLineRows] = useState([
+    { roomId: "", qty: "1", persons: "1" },
+  ]);
+  const roomLineHotelDateKeyRef = useRef("");
 
   const watchCheckInDate = watch("checkInDate");
   const watchCheckOutDate = watch("checkOutDate");
   const watchHotelId = watch("hotelId");
-  const watchNoOfRooms = watch("noofRooms");
-  const watchNoOfPersons = watch("cdnintnoOfPersons");
   const pendingInventoryRoomIdRef = useRef(null);
+
+  const totalRoomLineUnits = useMemo(
+    () => roomLineRows.reduce((s, r) => s + (parseInt(r.qty, 10) || 0), 0),
+    [roomLineRows]
+  );
+  const totalLinePersons = useMemo(
+    () => roomLineRows.reduce((s, r) => s + (parseInt(r.persons, 10) || 0), 0),
+    [roomLineRows]
+  );
   const showWizard = flow === FLOW_TYPE.NEW;
   const onPageLoad = async () => {
     // fetchLookupOptions();
@@ -148,6 +166,7 @@ function CreateReservation() {
       setSelectedHotel(selectedReservationData.hotelId);
       const createReservationForm = {
         hotelId: selectedReservationData.hotelId,
+        roomId: selectedReservationData.roomId || "",
         cdnintnoOfPersons: selectedReservationData.noOfPersons,
         noofRooms: selectedReservationData.noOfRooms,
         checkInDate: selectedReservationData.checkIn,
@@ -156,6 +175,13 @@ function CreateReservation() {
         sourceReference: selectedReservationData.sourceReference || "",
       };
       reset(createReservationForm);
+      setRoomLineRows([
+        {
+          roomId: selectedReservationData.roomId || "",
+          qty: String(selectedReservationData.noOfRooms ?? 1),
+          persons: String(selectedReservationData.noOfPersons ?? 1),
+        },
+      ]);
       setPageLoader(false);
     }
   }, [selectedReservationData, lookup, showSessionPopup]);
@@ -179,6 +205,7 @@ function CreateReservation() {
     }
     
     setSelectedHotel(hotelId);
+    setRoomLineRows([{ roomId: roomId || "", qty: "1", persons: "1" }]);
     reset({
       hotelId,
       roomId: "",
@@ -202,9 +229,72 @@ function CreateReservation() {
     );
     if (found) {
       setValue("roomId", found.roomId, { shouldValidate: true, shouldDirty: true });
+      setRoomLineRows((rows) => {
+        const next = rows.length ? [...rows] : [{ roomId: "", qty: "1", persons: "1" }];
+        next[0] = { ...next[0], roomId: found.roomId };
+        return next;
+      });
     }
     pendingInventoryRoomIdRef.current = null;
   }, [availableRoomsRaw, setValue]);
+
+  useEffect(() => {
+    if (flow === FLOW_TYPE.EDIT) return;
+    const key = `${watchHotelId}|${dayjs(watchCheckInDate).format("YYYY-MM-DD")}|${dayjs(watchCheckOutDate).format("YYYY-MM-DD")}`;
+    if (!watchHotelId || !dayjs(watchCheckInDate).isValid() || !dayjs(watchCheckOutDate).isValid()) {
+      return;
+    }
+    if (roomLineHotelDateKeyRef.current === "") {
+      roomLineHotelDateKeyRef.current = key;
+      return;
+    }
+    if (roomLineHotelDateKeyRef.current !== key) {
+      roomLineHotelDateKeyRef.current = key;
+      setRoomLineRows([{ roomId: "", qty: "1", persons: "1" }]);
+    }
+  }, [watchHotelId, watchCheckInDate, watchCheckOutDate, flow]);
+
+  useEffect(() => {
+    const first = roomLineRows[0]?.roomId || "";
+    setValue("roomId", first, { shouldValidate: false, shouldDirty: true });
+    setValue("noofRooms", String(totalRoomLineUnits), { shouldValidate: false, shouldDirty: true });
+    setValue("cdnintnoOfPersons", String(Math.max(0, totalLinePersons)), {
+      shouldValidate: false,
+      shouldDirty: true,
+    });
+  }, [roomLineRows, totalRoomLineUnits, totalLinePersons, setValue]);
+
+  /** First hotel in list once dates are set (hotel field is enabled); skips edit + calendar prefill. */
+  useEffect(() => {
+    if (flow === FLOW_TYPE.EDIT) return;
+    if (!hotelListData.length) return;
+    if (!watchCheckInDate || !watchCheckOutDate) return;
+
+    const checkIn = dayjs(watchCheckInDate);
+    const checkOut = dayjs(watchCheckOutDate);
+    if (!checkIn.isValid() || !checkOut.isValid()) return;
+    if (checkIn.isSame(checkOut) || checkIn.isAfter(checkOut)) return;
+
+    const block = location.state && location.state.inventoryBlock;
+    if (block && block.hotelId) return;
+
+    const currentId = getValues("hotelId");
+    if (currentId && hotelListData.some((h) => h.value === currentId)) {
+      return;
+    }
+
+    const first = hotelListData[0];
+    setSelectedHotel(first.value);
+    setValue("hotelId", first.value, { shouldValidate: true, shouldDirty: true });
+  }, [
+    flow,
+    hotelListData,
+    watchCheckInDate,
+    watchCheckOutDate,
+    location.state,
+    getValues,
+    setValue,
+  ]);
 
   useEffect(() => {
     const cb = location.state && location.state.completeBooking;
@@ -323,37 +413,138 @@ function CreateReservation() {
     const email = loginUserObj.email || "";
     let phone = loginUserObj.phone || "";
 
-    const requestedRooms = Number(formData.noofRooms || 0);
-    const enteredPersons = Number(formData.cdnintnoOfPersons || 0);
+    const lineCapacityMax = (roomId, unitCount) => {
+      const row = (availableRoomsRaw || []).find((r) => r?.roomId === roomId);
+      if (!row) return 0;
+      const baseGuests = Number(row?.noOfPersons ?? 0);
+      const allowExtra = row?.allowExtraPerson === true || row?.allowExtraPerson === "true";
+      const maxExtra = Number(row?.maxExtraPersons ?? 0);
+      const maxGuestsPerRoom = baseGuests + (allowExtra ? maxExtra : 0);
+      return maxGuestsPerRoom * Math.max(0, unitCount);
+    };
 
-    const selectedRoomData = (availableRoomsRaw || []).find(
-      (r) => r?.roomId === formData.roomId
-    );
+    const linesRaw = roomLineRows
+      .map((r) => ({
+        roomId: (r.roomId || "").trim(),
+        noofRooms: parseInt(r.qty, 10) || 0,
+        noOfPersons: parseInt(r.persons, 10) || 0,
+      }))
+      .filter((r) => r.roomId && r.noofRooms > 0);
 
-    if (!selectedRoomData) {
-      dispatch(showSnackbar({ type: "error", message: "Please select a room." }));
+    if (linesRaw.length === 0) {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: t("Add at least one room type with a quantity."),
+        })
+      );
       return;
     }
 
-    const availableRooms = Number(selectedRoomData?.totolNoRooms ?? 0);
-    const baseGuests = Number(selectedRoomData?.noOfPersons ?? 0);
-    const allowExtra = selectedRoomData?.allowExtraPerson === true || selectedRoomData?.allowExtraPerson === "true";
-    const maxExtra = Number(selectedRoomData?.maxExtraPersons ?? 0);
-    const maxGuestsPerRoom = baseGuests + (allowExtra ? maxExtra : 0);
-    const maxGuestsTotal = maxGuestsPerRoom * requestedRooms;
+    for (const r of linesRaw) {
+      const row = (availableRoomsRaw || []).find((x) => x?.roomId === r.roomId);
+      if (!row) {
+        dispatch(showSnackbar({ type: "error", message: t("Please select valid room types.") }));
+        return;
+      }
+      if (r.noOfPersons < 1) {
+        dispatch(
+          showSnackbar({
+            type: "error",
+            message: t("Each room line needs at least one guest."),
+          })
+        );
+        return;
+      }
+      if (r.noOfPersons > 25) {
+        dispatch(
+          showSnackbar({
+            type: "error",
+            message: t("Guests per line cannot exceed 25."),
+          })
+        );
+        return;
+      }
+      const cap = lineCapacityMax(r.roomId, r.noofRooms);
+      if (cap > 0 && r.noOfPersons > cap) {
+        dispatch(
+          showSnackbar({
+            type: "error",
+            message: t("Too many guests for one of the room lines. Check capacity for that room type."),
+          })
+        );
+        return;
+      }
+    }
+
+    const mergedLines = new Map();
+    linesRaw.forEach((r) => {
+      const ex = mergedLines.get(r.roomId) || { noofRooms: 0, noOfPersons: 0 };
+      mergedLines.set(r.roomId, {
+        noofRooms: ex.noofRooms + r.noofRooms,
+        noOfPersons: ex.noOfPersons + r.noOfPersons,
+      });
+    });
+    const roomLines = Array.from(mergedLines.entries()).map(([roomId, v]) => ({
+      roomId,
+      noofRooms: v.noofRooms,
+      noOfPersons: v.noOfPersons,
+    }));
+    const requestedRooms = roomLines.reduce((s, x) => s + x.noofRooms, 0);
+    const enteredPersons = roomLines.reduce((s, x) => s + x.noOfPersons, 0);
 
     if (requestedRooms <= 0 || enteredPersons <= 0) {
-      dispatch(showSnackbar({ type: "error", message: "Please enter No of Persons and Total No of Rooms first." }));
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: t("Please enter guests and room quantities for each line."),
+        })
+      );
       return;
     }
 
-    if (requestedRooms > availableRooms) {
-      dispatch(showSnackbar({ type: "error", message: `Not enough rooms available. Only ${availableRooms} rooms left.` }));
-      return;
+    for (const line of roomLines) {
+      const row = (availableRoomsRaw || []).find((r) => r?.roomId === line.roomId);
+      if (!row) {
+        dispatch(showSnackbar({ type: "error", message: t("Please select valid room types.") }));
+        return;
+      }
+      const avail = Number(row?.totolNoRooms ?? 0);
+      if (line.noofRooms > avail) {
+        dispatch(
+          showSnackbar({
+            type: "error",
+            message: t("Not enough rooms available for one of the selected types."),
+          })
+        );
+        return;
+      }
+      const cap = lineCapacityMax(line.roomId, line.noofRooms);
+      if (cap > 0 && line.noOfPersons > cap) {
+        dispatch(
+          showSnackbar({
+            type: "error",
+            message: t("Max capacity exceeded for the selected room mix."),
+          })
+        );
+        return;
+      }
     }
 
-    if (maxGuestsPerRoom > 0 && enteredPersons > maxGuestsTotal) {
-      dispatch(showSnackbar({ type: "error", message: `Max capacity exceeded. This room type allows up to ${maxGuestsTotal} guests for ${requestedRooms} rooms. Please increase Total No of Rooms or select another room type.` }));
+    let totalMaxGuests = 0;
+    for (const line of roomLines) {
+      totalMaxGuests += lineCapacityMax(line.roomId, line.noofRooms);
+    }
+
+    if (totalMaxGuests > 0 && enteredPersons > totalMaxGuests) {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: t(
+            "Max capacity exceeded for the selected room mix. Reduce guests or add rooms."
+          ),
+        })
+      );
       return;
     }
 
@@ -372,11 +563,27 @@ function CreateReservation() {
       email,
       phoneNumber: phone,
       isHotelBlocked: true,
+      roomId: roomLines[0].roomId,
       noofRooms: requestedRooms,
       cdnintnoOfPersons: enteredPersons,
       cpSourceType: formData.cpSourceType || "WALK_IN",
       sourceReference: formData.sourceReference || "",
     };
+    if (roomLines.length > 1) {
+      finalData.roomLines = roomLines.map(({ roomId, noofRooms, noOfPersons }) => ({
+        roomId,
+        noofRooms,
+        noOfPersons,
+      }));
+    }
+
+    const roomLabelForWizard = roomLines
+      .map((l) => {
+        const raw = (availableRoomsRaw || []).find((r) => r?.roomId === l.roomId);
+        const name = raw?.roomName || l.roomId;
+        return `${name} ×${l.noofRooms} (${l.noOfPersons} ${t("guests")})`;
+      })
+      .join(", ");
 
     setOnSumbitLoader(true);
     const response = await createReservation({ data: finalData, dispatch });
@@ -396,12 +603,10 @@ function CreateReservation() {
       if (showWizard && mode === "continue") {
         const hotelLabel =
           hotelListData.find((h) => h.value === formData.hotelId)?.label || "";
-        const roomLabel =
-          roomOptions.find((r) => r.value === formData.roomId)?.label || "";
         setWizardMeta({
           ...response,
           hotelLabel,
-          roomLabel,
+          roomLabel: roomLabelForWizard,
           noOfRooms: requestedRooms,
           noOfPersons: enteredPersons,
           checkIn: checkIn.toISOString(),
@@ -498,8 +703,8 @@ function CreateReservation() {
 
     const formattedCheckInDate = checkIn.format("YYYY-MM-DD");
     const formattedCheckOutDate = checkOut.format("YYYY-MM-DD");
-    const noofRooms = parseInt(watchNoOfRooms || "0", 10);
-    const cdnintnoOfPersons = parseInt(watchNoOfPersons || "0", 10);
+    const noofRooms = totalRoomLineUnits;
+    const cdnintnoOfPersons = totalLinePersons;
 
     setFormData({
       hotelId: watchHotelId,
@@ -508,10 +713,9 @@ function CreateReservation() {
       noofRooms,
       cdnintnoOfPersons,
     });
-  }, [watchHotelId, watchCheckInDate, watchCheckOutDate, watchNoOfRooms, watchNoOfPersons]);
+  }, [watchHotelId, watchCheckInDate, watchCheckOutDate, totalRoomLineUnits, totalLinePersons]);
 
   useEffect(() => {
-    const requestedRooms = parseInt(watchNoOfRooms || "0", 10) || 0;
     const roomOpts = (availableRoomsRaw || []).map((item) => {
       const availableRooms = Number(item?.totolNoRooms ?? 0);
       const baseGuests = Number(item?.noOfPersons ?? 0);
@@ -522,13 +726,13 @@ function CreateReservation() {
       return {
         label: `${item.roomName} (${availableRooms} available)`,
         value: item.roomId,
-        disabled: requestedRooms > 0 ? availableRooms < requestedRooms : false,
+        disabled: availableRooms < 1,
         availableRooms,
         maxGuestsPerRoom,
       };
     });
     setRoomOptions(roomOpts);
-  }, [availableRoomsRaw, watchNoOfRooms]);
+  }, [availableRoomsRaw]);
 
 
   const formatInr = (n) => {
@@ -1040,6 +1244,7 @@ function CreateReservation() {
               label={t("Check In Date")}
               control={control}
               variant="outlined"
+              size="small"
               disablePast
               minDate={today}
               rules={{ required: "Check In Date is required" }}
@@ -1050,8 +1255,9 @@ function CreateReservation() {
               label={t("Check Out Date")}
               control={control}
               variant="outlined"
+              size="small"
               disablePast
-              minDate={today}
+              minDate={today.add(1, "day")}
               rules={{ required: "Check Out Date is required" }}
               error={!!errors.checkOutDate}
               helperText={errors.checkOutDate?.message}
@@ -1062,6 +1268,7 @@ function CreateReservation() {
               label={t("Hotel Name")}
               control={control}
               variant="outlined"
+              size="small"
               options={hotelListData}
               values={selectedHotel}
               disabled={hotelDisabled}
@@ -1070,14 +1277,128 @@ function CreateReservation() {
             />
 
             {isPriceAvailable && (
-              <CustomSelectField
-                id="roomId"
-                label={t("Room Name")}
-                control={control}
-                variant="outlined"
-                options={roomOptions}
-                rules={{ required: "Room Name is required" }}
-              />
+              <div className="room-block-section" style={{ width: "100%", padding: "0 15px", marginBottom: 20 }}>
+                <p className="title-header" style={{ marginBottom: 10 }}>
+                  {t("Room types & guests")}
+                  <span style={{ fontWeight: 400, fontSize: "0.8rem", color: "#757575", marginLeft: 12 }}>
+                    {t("Rooms")}: {totalRoomLineUnits} &nbsp;|&nbsp; {t("Guests")}: {totalLinePersons}
+                  </span>
+                </p>
+
+                {roomLineRows.map((row, idx) => (
+                  <div
+                    key={`room-line-${idx}`}
+                    className="room-line-row"
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      alignItems: "center",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <FormControl variant="outlined" size="small" style={{ flex: "1 1 200px", minWidth: 200 }}>
+                      <InputLabel id={`room-line-lbl-${idx}`}>{t("Room type")}</InputLabel>
+                      <Select
+                        labelId={`room-line-lbl-${idx}`}
+                        label={t("Room type")}
+                        size="small"
+                        value={row.roomId || ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setRoomLineRows((lines) => {
+                            const next = [...lines];
+                            next[idx] = { ...next[idx], roomId: v };
+                            return next;
+                          });
+                          if (idx === 0) {
+                            setValue("roomId", v, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            });
+                          }
+                        }}
+                      >
+                        {roomOptions.map((opt) => (
+                          <MenuItem key={opt.value} value={opt.value} disabled={!!opt.disabled}>
+                            {opt.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      label={t("Rooms")}
+                      variant="outlined"
+                      type="number"
+                      size="small"
+                      inputProps={{ min: 1, step: 1 }}
+                      value={row.qty}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRoomLineRows((lines) => {
+                          const next = [...lines];
+                          next[idx] = { ...next[idx], qty: v };
+                          return next;
+                        });
+                      }}
+                      style={{ width: 100 }}
+                    />
+
+                    <TextField
+                      label={t("Guests")}
+                      variant="outlined"
+                      type="number"
+                      size="small"
+                      inputProps={{ min: 1, max: 25, step: 1 }}
+                      value={row.persons}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRoomLineRows((lines) => {
+                          const next = [...lines];
+                          next[idx] = { ...next[idx], persons: v };
+                          return next;
+                        });
+                      }}
+                      style={{ width: 100 }}
+                    />
+
+                    {roomLineRows.length > 1 && (
+                      <IconButton
+                        type="button"
+                        size="small"
+                        aria-label={t("Remove room line")}
+                        onClick={() =>
+                          setRoomLineRows((lines) =>
+                            lines.length <= 1
+                              ? lines
+                              : lines.filter((_, i) => i !== idx)
+                          )
+                        }
+                        sx={{ color: "error.main" }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() =>
+                    setRoomLineRows((lines) => [
+                      ...lines,
+                      { roomId: "", qty: "1", persons: "1" },
+                    ])
+                  }
+                  sx={{ textTransform: "none" }}
+                >
+                  {t("Add room type")}
+                </Button>
+              </div>
             )}
 
             <CustomSelectField
@@ -1085,6 +1406,7 @@ function CreateReservation() {
               label={t("Booking source")}
               control={control}
               variant="outlined"
+              size="small"
               options={CP_SOURCE_OPTIONS}
               disabled={isDisabled}
             />
@@ -1094,38 +1416,11 @@ function CreateReservation() {
               label={t("Source reference (optional)")}
               control={control}
               variant="outlined"
+              size="small"
               disabled={isDisabled}
             />
 
-            <NumericInputComponent
-              id="cdnintnoOfPersons"
-              label={"No of Persons"}
-              control={control}
-              variant="outlined"
-              inputProps={{ min: 1 }}
-              // rules={{ required: "Number of Persons is required" }}
-              rules={{
-                validate: (value) => {
-                  if (value === "") {
-                    return "No of Persons is required";
-                  }
-                  if (isNaN(value)) {
-                    return "Please enter a valid number";
-                  }
-                  const numericValue = parseFloat(value);
-                  if (numericValue <= 0) {
-                    return "No of Persons must be greater than 0";
-                  }
-                  if (numericValue > 25) {
-                    return "The number of persons cannot exceed 25";
-                  }
-                  if (!/^\d{1,4}$/.test(value)) {
-                    return "The No of Persons cannot be a decimal";
-                  }
-                  return true;
-                },
-              }}
-            />
+            <input type="hidden" {...register("cdnintnoOfPersons")} />
 
             {/* <NumericInputComponent
               id="noofRooms"
@@ -1155,32 +1450,6 @@ function CreateReservation() {
                 },
               }}
             /> */}
-            <NumericInputComponent
-              id="noofRooms"
-              label={"Total No of Rooms"}
-              control={control}
-              variant="outlined"
-              inputProps={{ min: 1 }}
-              rules={{
-                validate: (value) => {
-                  if (!value.trim()) {
-                    return "Total No of Rooms is required.";
-                  }
-                  if (!/^\d+$/.test(value)) {
-                    return "Total No of Rooms cannot be a decimal";
-                  }
-                  const numericValue = parseInt(value, 10);
-                  if (numericValue <= 0) {
-                    return "No of Rooms must be greater than 0.";
-                  }
-                  if (numericValue > 9999) {
-                    return "Please enter a maximum of 4 digits.";
-                  }
-
-                  return true;
-                },
-              }}
-            />
           </div>
           <div
             style={{

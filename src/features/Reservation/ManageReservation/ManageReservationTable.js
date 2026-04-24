@@ -640,45 +640,41 @@ function ManageReservationTable() {
                         <Typography variant="body2" fontWeight={600} className="manage-reservation-card-item__amount">
                           {formatMoney(row.totalCost)}
                         </Typography>
-
-                        <Stack className="manage-reservation-card-item__actions" direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
-                          {blocked && canComplete && (
-                            <Tooltip title={t('Move to booking completion flow')}>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                color="primary"
-                                className="manage-reservation-card-item__action-btn manage-reservation-card-item__action-btn--complete"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCompleteBooking(row);
-                                }}
-                                aria-label="complete-booking"
-                              >
-                                {t('Complete booking')}
-                              </Button>
-                            </Tooltip>
-                          )}
-                          {canCancelFromPanel && (
-                            <Tooltip title={t('Cancel booking')}>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                color="error"
-                                className="manage-reservation-card-item__action-btn manage-reservation-card-item__action-btn--delete"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelBookingClick(row);
-                                }}
-                                aria-label="cancel-booking"
-                              >
-                                {t('Cancel')}
-                              </Button>
-                            </Tooltip>
-                          )}
-                        </Stack>
                       </Box>
                     </CardActionArea>
+
+                    {(blocked && canComplete) || canCancelFromPanel ? (
+                      <Stack className="manage-reservation-card-item__actions" direction="row" spacing={1} sx={{ px: 1.5, pb: 1.5 }}>
+                        {blocked && canComplete && (
+                          <Tooltip title={t('Move to booking completion flow')}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              className="manage-reservation-card-item__action-btn manage-reservation-card-item__action-btn--complete"
+                              onClick={() => handleCompleteBooking(row)}
+                              aria-label="complete-booking"
+                            >
+                              {t('Complete booking')}
+                            </Button>
+                          </Tooltip>
+                        )}
+                        {canCancelFromPanel && (
+                          <Tooltip title={t('Cancel booking')}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="error"
+                              className="manage-reservation-card-item__action-btn manage-reservation-card-item__action-btn--delete"
+                              onClick={() => handleCancelBookingClick(row)}
+                              aria-label="cancel-booking"
+                            >
+                              {t('Cancel')}
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    ) : null}
                   </Card>
                 </Box>
               );

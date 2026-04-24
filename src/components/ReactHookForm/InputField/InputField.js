@@ -3,7 +3,7 @@ import { TextField } from '@mui/material';
 import { Controller } from "react-hook-form";
 import InputAdornment from '@mui/material/InputAdornment';
 
-function InputField({ id, label, type, readOnly = false, textAlign = 'left', control, rules, variant = "outlined", fullWidth = true, disabled, icon, helpText, handleCustomInputChange }) {
+function InputField({ id, label, type, readOnly = false, textAlign = 'left', control, rules, variant = "outlined", fullWidth = true, disabled, icon, helpText, handleCustomInputChange, size }) {
   return (
     <div className="form-field">
       <Controller
@@ -41,6 +41,7 @@ function InputField({ id, label, type, readOnly = false, textAlign = 'left', con
             inputProps={{ min: 0, style: { textAlign: textAlign } }}
             helperText={error ? error.message : helpText}
             fullWidth={fullWidth}
+            size={size}
           />
         }}
       />
