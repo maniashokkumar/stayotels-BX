@@ -83,6 +83,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
   const [collectMode, setCollectMode] = useState(false);
   const [refundStatusLocal, setRefundStatusLocal] = useState('PENDING');
   const [refundStatusSaving, setRefundStatusSaving] = useState(false);
+  const [roomLineEdits, setRoomLineEdits] = useState([]);
 
   useEffect(() => {
     setEditMode(false);
@@ -94,6 +95,19 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
       noofRooms: reservation?.noOfRooms != null ? String(reservation.noOfRooms) : '',
       cdnintnoOfPersons: reservation?.noOfPersons != null ? String(reservation.noOfPersons) : '',
     });
+    // Initialise per-line edits for multi-room reservations
+    const lines = Array.isArray(reservation?.roomLines) ? reservation.roomLines : [];
+    setRoomLineEdits(
+      lines.length > 1
+        ? lines.map((l) => ({
+            roomId: l.roomId || '',
+            roomName: l.roomName || l.roomId || '',
+            noOfRooms: String(l.noOfRooms ?? 1),
+            noOfPersons: String(l.noOfPersons ?? 1),
+            lineTotal: l.lineTotal ?? null,
+          }))
+        : []
+    );
     setCollectAmount('');
     setCollectMethod('CASH');
     setCollectRef('');
@@ -103,6 +117,11 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
   useEffect(() => {
     setRefundStatusLocal(normalizeRefundStatusForEdit(reservation?.refundStatus));
   }, [reservation?.reservationId, reservation?.refundStatus]);
+
+  const isMultiRoomReservation = useMemo(() => {
+    const r = reservation?.rooms || '';
+    return r.includes(',');
+  }, [reservation?.rooms]);
 
   useEffect(() => {
     if (!editMode || !reservation?.hotelId || !form.checkInDate || !form.checkOutDate) return;
@@ -120,7 +139,8 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
       if (cancelled) return;
       const arr = Array.isArray(rows) ? rows : [];
       setRoomOptions(arr);
-      if (arr.length > 0 && !arr.some((r) => r?.roomId === form.roomId)) {
+      // For single-room only: reset roomId if the selected one is no longer available
+      if (!isMultiRoomReservation && arr.length > 0 && !arr.some((r) => r?.roomId === form.roomId)) {
         setForm((s) => ({ ...s, roomId: arr[0]?.roomId || '' }));
       }
     })();
@@ -128,7 +148,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     return () => {
       cancelled = true;
     };
-  }, [editMode, reservation?.hotelId, form.checkInDate, form.checkOutDate, form.roomId, dispatch]);
+  }, [editMode, reservation?.hotelId, form.checkInDate, form.checkOutDate, form.roomId, isMultiRoomReservation, dispatch]);
 
   const selectedRoom = useMemo(
     () => roomOptions.find((r) => r?.roomId === form.roomId) || null,
@@ -139,14 +159,36 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     const n = dayjs(form.checkOutDate).diff(dayjs(form.checkInDate), 'day');
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [form.checkInDate, form.checkOutDate]);
+
   const livePreviewTotal = useMemo(() => {
-    if (!editMode || !selectedRoom || liveNights == null) return null;
+    if (!editMode || liveNights == null) return null;
+
+    if (isMultiRoomReservation && roomLineEdits.length > 1) {
+      // Multi-room: sum each line's qty × basePrice × nights
+      if (roomOptions.length === 0) return null; // prices not loaded yet
+      let total = 0;
+      for (const line of roomLineEdits) {
+        const qty = Number(line.noOfRooms);
+        if (!Number.isFinite(qty) || qty <= 0) return null;
+        const roomOpt = roomOptions.find((r) => r?.roomId === line.roomId);
+        if (!roomOpt) return null; // room not in options yet
+        const basePrice = Number(roomOpt.basePrice);
+        if (!Number.isFinite(basePrice) || basePrice <= 0) return null;
+        total += basePrice * qty * liveNights;
+      }
+      return total;
+    }
+
+    // Single-room
+    if (!selectedRoom) return null;
     const basePrice = Number(selectedRoom?.basePrice);
     const rooms = Number(form.noofRooms);
     if (!Number.isFinite(basePrice) || basePrice <= 0) return null;
     if (!Number.isFinite(rooms) || rooms <= 0) return null;
     return basePrice * rooms * liveNights;
-  }, [editMode, selectedRoom, form.noofRooms, liveNights]);
+  }, [editMode, selectedRoom, form.noofRooms, liveNights, isMultiRoomReservation, roomLineEdits, roomOptions]);
+
+
   const liveDelta = useMemo(() => {
     if (livePreviewTotal == null) return null;
     return livePreviewTotal - Number(reservation?.totalCost || 0);
@@ -180,21 +222,38 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
   const handleSave = async () => {
     if (!reservation?.reservationId || formError) return;
     setSaving(true);
-    const nights = dayjs(form.checkOutDate).diff(dayjs(form.checkInDate), 'day');
-    const maybeBasePrice = Number(selectedRoom?.basePrice);
-    const derivedPrice =
-      Number.isFinite(maybeBasePrice) && maybeBasePrice > 0 && Number.isFinite(nights) && nights > 0
-        ? maybeBasePrice * Number(form.noofRooms) * nights
-        : Number(reservation.totalCost || 0);
-    const body = {
-      roomId: form.roomId,
-      checkInDate: dayjs(form.checkInDate).format('YYYY-MM-DD'),
-      checkOutDate: dayjs(form.checkOutDate).format('YYYY-MM-DD'),
-      noofRooms: Number(form.noofRooms),
-      cdnintnoOfPersons: Number(form.cdnintnoOfPersons),
-      price: derivedPrice,
-      changeType: 'AMENDMENT',
-    };
+    let body;
+    if (isMultiRoomReservation && roomLineEdits.length > 1) {
+      // Multi-room: send updated per-line qty/persons + dates; keep price server-computed.
+      body = {
+        checkInDate: dayjs(form.checkInDate).format('YYYY-MM-DD'),
+        checkOutDate: dayjs(form.checkOutDate).format('YYYY-MM-DD'),
+        roomLines: roomLineEdits.map((l) => ({
+          roomId: l.roomId,
+          noofRooms: Number(l.noOfRooms) || 1,
+          noOfPersons: Number(l.noOfPersons) || 1,
+        })),
+        noofRooms: roomLineEdits.reduce((s, l) => s + (Number(l.noOfRooms) || 0), 0),
+        cdnintnoOfPersons: roomLineEdits.reduce((s, l) => s + (Number(l.noOfPersons) || 0), 0),
+        changeType: 'AMENDMENT',
+      };
+    } else {
+      const nights = dayjs(form.checkOutDate).diff(dayjs(form.checkInDate), 'day');
+      const maybeBasePrice = Number(selectedRoom?.basePrice);
+      const derivedPrice =
+        Number.isFinite(maybeBasePrice) && maybeBasePrice > 0 && Number.isFinite(nights) && nights > 0
+          ? maybeBasePrice * Number(form.noofRooms) * nights
+          : Number(reservation.totalCost || 0);
+      body = {
+        roomId: form.roomId,
+        checkInDate: dayjs(form.checkInDate).format('YYYY-MM-DD'),
+        checkOutDate: dayjs(form.checkOutDate).format('YYYY-MM-DD'),
+        noofRooms: Number(form.noofRooms),
+        cdnintnoOfPersons: Number(form.cdnintnoOfPersons),
+        price: derivedPrice,
+        changeType: 'AMENDMENT',
+      };
+    }
     const ok = await updateReservation({
       data: body,
       reservationId: reservation.reservationId,
@@ -356,26 +415,57 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                     {t('Adults')}
                     {reservation.noOfChildren != null ? ` + ${reservation.noOfChildren} ${t('Children')}` : ''}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {reservation.rooms || reservation.roomName || '—'}
-                  </Typography>
+                  {/* Per-room-type breakdown from roomLines (new bookings) */}
+                  {Array.isArray(reservation.roomLines) && reservation.roomLines.length > 0 ? (
+                    <Box
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        mb: 1,
+                      }}
+                    >
+                      {reservation.roomLines.map((line, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            px: 1.5,
+                            py: 0.75,
+                            bgcolor: i % 2 === 0 ? 'grey.50' : 'background.paper',
+                            borderTop: i > 0 ? '1px solid' : 'none',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>
+                              {line.roomName || line.roomId}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {line.noOfRooms} {t('room(s)')} · {line.noOfPersons} {t('guest(s)')}
+                            </Typography>
+                          </Box>
+                          {line.lineTotal != null ? (
+                            <Typography variant="body2" fontWeight={700}>
+                              {formatMoney(line.lineTotal)}
+                            </Typography>
+                          ) : null}
+                        </Box>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {reservation.rooms || reservation.roomName || '—'}
+                    </Typography>
+                  )}
                 </>
               ) : (
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <Stack spacing={1.25} sx={{ mb: 1 }}>
-                    <TextField
-                      select
-                      label={t('Room type')}
-                      size="small"
-                      value={form.roomId}
-                      onChange={(e) => setForm((s) => ({ ...s, roomId: e.target.value }))}
-                    >
-                      {roomOptions.map((opt) => (
-                        <MenuItem key={opt.roomId} value={opt.roomId}>
-                          {opt.roomName || opt.roomId}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    {/* Date pickers — always shown in edit mode */}
                     <DatePicker
                       label={t('Check-in')}
                       value={form.checkInDate}
@@ -388,20 +478,99 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                       onChange={(v) => setForm((s) => ({ ...s, checkOutDate: v }))}
                       renderInput={(params) => <TextField {...params} size="small" />}
                     />
-                    <TextField
-                      label={t('Total No of Rooms')}
-                      size="small"
-                      type="number"
-                      value={form.noofRooms}
-                      onChange={(e) => setForm((s) => ({ ...s, noofRooms: e.target.value }))}
-                    />
-                    <TextField
-                      label={t('No of Persons')}
-                      size="small"
-                      type="number"
-                      value={form.cdnintnoOfPersons}
-                      onChange={(e) => setForm((s) => ({ ...s, cdnintnoOfPersons: e.target.value }))}
-                    />
+
+                    {isMultiRoomReservation && roomLineEdits.length > 1 ? (
+                      /* Multi-room: show per-line editable rows */
+                      <>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          {t('Room breakdown')}
+                        </Typography>
+                        {roomLineEdits.map((line, idx) => (
+                          <Box
+                            key={idx}
+                            sx={{
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              p: 1.25,
+                              bgcolor: 'grey.50',
+                            }}
+                          >
+                            <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                              {line.roomName}
+                            </Typography>
+                            <Stack direction="row" spacing={1}>
+                              <TextField
+                                label={t('Rooms')}
+                                size="small"
+                                type="number"
+                                inputProps={{ min: 1, step: 1 }}
+                                value={line.noOfRooms}
+                                onChange={(e) =>
+                                  setRoomLineEdits((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], noOfRooms: e.target.value };
+                                    return next;
+                                  })
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                              <TextField
+                                label={t('Guests')}
+                                size="small"
+                                type="number"
+                                inputProps={{ min: 1, max: 25, step: 1 }}
+                                value={line.noOfPersons}
+                                onChange={(e) =>
+                                  setRoomLineEdits((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], noOfPersons: e.target.value };
+                                    return next;
+                                  })
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                            </Stack>
+                          </Box>
+                        ))}
+                        <Typography variant="caption" color="text.secondary">
+                          {t('Total')}: {roomLineEdits.reduce((s, l) => s + (Number(l.noOfRooms) || 0), 0)} {t('room(s)')} ·{' '}
+                          {roomLineEdits.reduce((s, l) => s + (Number(l.noOfPersons) || 0), 0)} {t('guest(s)')}
+                        </Typography>
+                      </>
+                    ) : (
+                      /* Single room: original form fields */
+                      <>
+                        <TextField
+                          select
+                          label={t('Room type')}
+                          size="small"
+                          value={form.roomId}
+                          onChange={(e) => setForm((s) => ({ ...s, roomId: e.target.value }))}
+                        >
+                          {roomOptions.map((opt) => (
+                            <MenuItem key={opt.roomId} value={opt.roomId}>
+                              {opt.roomName || opt.roomId}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          label={t('Total No of Rooms')}
+                          size="small"
+                          type="number"
+                          value={form.noofRooms}
+                          onChange={(e) => setForm((s) => ({ ...s, noofRooms: e.target.value }))}
+                        />
+                        <TextField
+                          label={t('No of Persons')}
+                          size="small"
+                          type="number"
+                          value={form.cdnintnoOfPersons}
+                          onChange={(e) => setForm((s) => ({ ...s, cdnintnoOfPersons: e.target.value }))}
+                        />
+                      </>
+                    )}
+
                     {formError ? (
                       <Typography variant="caption" color="error">
                         {formError}

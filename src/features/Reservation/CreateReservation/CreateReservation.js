@@ -1463,6 +1463,14 @@ function CreateReservation() {
               <>
                 <Button
                   type="button"
+                  variant="text"
+                  sx={{ mt: 2 }}
+                  onClick={() => navigate("/manage-reservation")}
+                >
+                  {t("Back")}
+                </Button>
+                <Button
+                  type="button"
                   variant="outlined"
                   color="primary"
                   sx={{ mt: 2 }}
