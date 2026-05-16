@@ -7,6 +7,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { MUIDataTable } from '../../../components/index';
 import { fetchCancellationList, updateRefundDetails } from './manageCancellationTableSlice';
+import { reservationGrandTotal } from '../reservationDisplayUtils';
 
 function ManageCancellationTable() {
     const dispatch = useDispatch();
@@ -94,11 +95,15 @@ function ManageCancellationTable() {
         },
         {
             name: "totalCost",
-            label: t("Original Amount"),
+            label: t("Amount paid"),
             options: {
                 filter: false,
                 sort: true,
-                customBodyRender: (value) => `₹${value?.toFixed(2)}`
+                customBodyRender: (value, tableMeta) => {
+                    const row = rowAtMeta(tableMeta);
+                    const paid = row ? reservationGrandTotal(row) : Number(value) || 0;
+                    return `₹${paid.toFixed(2)}`;
+                },
             }
         },
         {

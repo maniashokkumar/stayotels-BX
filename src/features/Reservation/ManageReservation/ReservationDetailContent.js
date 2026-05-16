@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
-import { Box, IconButton, Typography, Divider, Stack, Button, TextField, MenuItem } from '@mui/material';
+import { Box, IconButton, Typography, Divider, Stack, Button, TextField, MenuItem, Tooltip } from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import dayjs from 'dayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
@@ -18,6 +19,9 @@ import {
   guestEmail,
   guestPhone,
   formatMoney,
+  reservationGst,
+  reservationGrandTotal,
+  reservationPreTax,
   statusLabel,
   channelLabel,
   cpSourceLabel,
@@ -26,6 +30,14 @@ import {
   nightsBetween,
 } from '../reservationDisplayUtils';
 import { DetailRow, SectionCard } from '../ReservationDrawerShared';
+import GstSummary from '../../../components/GstSummary/GstSummary';
+import {
+  buildBookingQuotePayload,
+  buildCpQuoteRoomsFromForm,
+  summarizeQuoteGst,
+  isQuoteReady,
+} from '../../../Utils/gstQuoteUtils';
+import { fetchBookingQuote } from '../CreateReservation/CreateReservationApi';
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
 
@@ -43,9 +55,7 @@ function ledgerSum(booking) {
 }
 
 function payableGrandTotal(booking) {
-  const room = Number(booking?.totalCost) || 0;
-  const sup = Number(booking?.supplementTotal) || 0;
-  return room + sup;
+  return reservationGrandTotal(booking);
 }
 
 function paymentAdjustmentLabel(booking, t) {
@@ -84,6 +94,9 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
   const [refundStatusLocal, setRefundStatusLocal] = useState('PENDING');
   const [refundStatusSaving, setRefundStatusSaving] = useState(false);
   const [roomLineEdits, setRoomLineEdits] = useState([]);
+  const [editQuoteLoading, setEditQuoteLoading] = useState(false);
+  const [editQuoteError, setEditQuoteError] = useState(null);
+  const [editQuoteSummary, setEditQuoteSummary] = useState(null);
 
   useEffect(() => {
     setEditMode(false);
@@ -194,6 +207,104 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     return livePreviewTotal - Number(reservation?.totalCost || 0);
   }, [livePreviewTotal, reservation?.totalCost]);
 
+  const persistedPreTax = reservationPreTax(reservation);
+  const persistedGst = reservationGst(reservation);
+  const persistedGrand = reservationGrandTotal(reservation);
+
+  const editQuotePayload = useMemo(() => {
+    if (!editMode || !reservation?.hotelId || !form.checkInDate || !form.checkOutDate) return null;
+    if (!dayjs(form.checkInDate).isValid() || !dayjs(form.checkOutDate).isValid()) return null;
+    const selectedRooms = buildCpQuoteRoomsFromForm({
+      isMultiRoom: isMultiRoomReservation,
+      roomLineEdits,
+      form,
+      roomOptions,
+    });
+    if (!selectedRooms?.length) return null;
+    return buildBookingQuotePayload({
+      hotelId: reservation.hotelId,
+      checkInDate: dayjs(form.checkInDate).format('YYYY-MM-DD'),
+      checkOutDate: dayjs(form.checkOutDate).format('YYYY-MM-DD'),
+      cdnintnoOfPersons: isMultiRoomReservation && roomLineEdits.length > 1
+        ? roomLineEdits.reduce((s, l) => s + (Number(l.noOfPersons) || 0), 0)
+        : Number(form.cdnintnoOfPersons) || 0,
+      selectedRooms,
+      couponCode: null,
+    });
+  }, [
+    editMode,
+    reservation?.hotelId,
+    form,
+    roomLineEdits,
+    roomOptions,
+    isMultiRoomReservation,
+  ]);
+
+  useEffect(() => {
+    if (!editQuotePayload) {
+      setEditQuoteSummary(null);
+      setEditQuoteError(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setEditQuoteLoading(true);
+    setEditQuoteError(null);
+    (async () => {
+      const quote = await fetchBookingQuote({ data: editQuotePayload, dispatch });
+      if (cancelled) return;
+      if (!quote) {
+        setEditQuoteError('Unable to load tax quote');
+        setEditQuoteSummary(null);
+      } else {
+        const summary = summarizeQuoteGst(quote);
+        if (!summary.valid) {
+          setEditQuoteError(summary.error || 'Unable to calculate tax');
+          setEditQuoteSummary(null);
+        } else {
+          setEditQuoteSummary(summary);
+        }
+      }
+      setEditQuoteLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editQuotePayload, dispatch]);
+
+  const persistedCgstSgst = useMemo(() => {
+    const rows = reservation?.taxBreakdown;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const half = persistedGst / 2;
+      return { cgst: half, sgst: persistedGst - half };
+    }
+    let cgst = 0;
+    let sgst = 0;
+    for (const r of rows) {
+      cgst += Number(r.cgst) || 0;
+      sgst += Number(r.sgst) || 0;
+    }
+    return { cgst, sgst };
+  }, [reservation?.taxBreakdown, persistedGst]);
+
+  const displayPreTax = editMode
+    ? editQuoteSummary?.preTax ?? livePreviewTotal ?? persistedPreTax
+    : persistedPreTax;
+  const displayGst = editMode ? editQuoteSummary?.gst ?? persistedGst : persistedGst;
+  const displayCgst = editMode ? editQuoteSummary?.cgst ?? 0 : persistedCgstSgst.cgst;
+  const displaySgst = editMode ? editQuoteSummary?.sgst ?? 0 : persistedCgstSgst.sgst;
+  const editQuoteReady = isQuoteReady(editQuoteSummary, editQuoteLoading, editQuoteError);
+  const displayGrand = editMode
+    ? editQuoteReady
+      ? editQuoteSummary.total
+      : persistedGrand
+    : persistedGrand;
+  const supplementTotal = Number(reservation?.supplementTotal) || 0;
+  const totalPayableDisplay = roundMoney(displayGrand + supplementTotal);
+
+  function roundMoney(v) {
+    return Math.round((Number(v) || 0) * 100) / 100;
+  }
+
   const formError = useMemo(() => {
     if (!editMode) return '';
     if (!form.roomId) return t('Room type is required');
@@ -221,6 +332,15 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
 
   const handleSave = async () => {
     if (!reservation?.reservationId || formError) return;
+    if (editMode && editQuotePayload && !editQuoteLoading && !editQuoteReady) {
+      dispatch(
+        showSnackbar({
+          type: 'error',
+          message: t('Unable to confirm price for this change. Please fix errors or wait for the quote.'),
+        })
+      );
+      return;
+    }
     setSaving(true);
     let body;
     if (isMultiRoomReservation && roomLineEdits.length > 1) {
@@ -238,19 +358,12 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
         changeType: 'AMENDMENT',
       };
     } else {
-      const nights = dayjs(form.checkOutDate).diff(dayjs(form.checkInDate), 'day');
-      const maybeBasePrice = Number(selectedRoom?.basePrice);
-      const derivedPrice =
-        Number.isFinite(maybeBasePrice) && maybeBasePrice > 0 && Number.isFinite(nights) && nights > 0
-          ? maybeBasePrice * Number(form.noofRooms) * nights
-          : Number(reservation.totalCost || 0);
       body = {
         roomId: form.roomId,
         checkInDate: dayjs(form.checkInDate).format('YYYY-MM-DD'),
         checkOutDate: dayjs(form.checkOutDate).format('YYYY-MM-DD'),
         noofRooms: Number(form.noofRooms),
         cdnintnoOfPersons: Number(form.cdnintnoOfPersons),
-        price: derivedPrice,
         changeType: 'AMENDMENT',
       };
     }
@@ -580,21 +693,69 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                 </LocalizationProvider>
               )}
               <Divider sx={{ my: 1.5 }} />
-              <Stack direction="row" justifyContent="space-between" alignItems="baseline">
-                <Typography variant="caption" color="text.secondary">
-                  {editMode ? t('Current amount') : t('Amount')}
+              
+              <GstSummary
+                compact
+                ready={editMode ? editQuoteReady : true}
+                preTax={displayPreTax}
+                gst={displayGst}
+                cgst={displayCgst}
+                sgst={displaySgst}
+                total={displayGrand}
+                ratePercent={editMode ? editQuoteSummary?.ratePercent : null}
+                mixedRates={editMode ? editQuoteSummary?.mixedRates : false}
+                loading={editMode && editQuoteLoading}
+                error={editMode ? editQuoteError : null}
+              />
+
+              {!editMode && reservation?.taxBreakdown?.length > 0 && (
+                <Stack direction="row" alignItems="center" gap={0.5} sx={{ mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('GST breakdown')}
+                  </Typography>
+                  <Tooltip
+                    title={
+                      <Box sx={{ p: 0.5 }}>
+                        {reservation.taxBreakdown.map((tx, idx) => (
+                          <Typography key={idx} variant="caption" display="block">
+                            {tx.roomName || tx.stayDate}: {tx.gstRate}% — ₹{Number(tx.gstAmount || 0).toFixed(2)}
+                          </Typography>
+                        ))}
+                      </Box>
+                    }
+                  >
+                    <InfoOutlinedIcon sx={{ fontSize: 14, color: 'text.secondary', cursor: 'pointer' }} />
+                  </Tooltip>
+                </Stack>
+              )}
+
+              {supplementTotal > 0 && (
+                <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('Add-ons')}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {formatMoney(supplementTotal)}
+                  </Typography>
+                </Stack>
+              )}
+
+              <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 1 }}>
+                <Typography variant="body2" fontWeight={700}>
+                  {t('Total payable')}
                 </Typography>
-                <Typography variant="h6" fontWeight={700}>
-                  {formatMoney(reservation.totalCost)}
+                <Typography variant="h6" fontWeight={800} color="primary">
+                  {formatMoney(totalPayableDisplay)}
                 </Typography>
               </Stack>
+
               {editMode ? (
                 <>
-                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 0.5 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ddd' }}>
                     <Typography variant="caption" color="text.secondary">
-                      {t('Updated amount (preview)')}
+                      {t('Updated total (includes previewed rooms)')}
                     </Typography>
-                    <Typography variant="body1" fontWeight={700}>
+                    <Typography variant="h6" fontWeight={800} color="secondary">
                       {livePreviewTotal != null ? formatMoney(livePreviewTotal) : '—'}
                     </Typography>
                   </Stack>
@@ -602,7 +763,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                     <Typography variant="caption" color="text.secondary">
                       {t('Difference')}
                     </Typography>
-                    <Box
+                    <Typography
                       sx={{
                         px: liveDelta == null ? 0 : 1,
                         py: liveDelta == null ? 0 : 0.35,
@@ -622,15 +783,16 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                           liveDelta == null
                             ? 'transparent'
                             : liveDelta < 0
-                              ? 'rgba(46, 125, 50, 0.12)'
+                              ? 'success.50'
                               : liveDelta > 0
-                                ? 'rgba(211, 47, 47, 0.12)'
-                                : 'rgba(100, 116, 139, 0.08)',
+                                ? 'error.50'
+                                : 'grey.100',
                       }}
                     >
-                      {liveDelta == null ? '—' : formatMoney(Math.abs(liveDelta))}
-                      {liveDelta == null ? '' : liveDelta < 0 ? ` ${t('refund')}` : liveDelta > 0 ? ` ${t('additional')}` : ''}
-                    </Box>
+                      {liveDelta == null
+                        ? '—'
+                        : `${liveDelta > 0 ? '+' : ''}${formatMoney(liveDelta)}`}
+                    </Typography>
                   </Stack>
                   {livePreviewTotal == null ? (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>

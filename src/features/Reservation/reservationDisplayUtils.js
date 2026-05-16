@@ -107,3 +107,19 @@ export function nightsBetween(checkIn, checkOut) {
   const n = b.diff(a, 'day');
   return n > 0 ? n : '—';
 }
+
+export function reservationPreTax(booking) {
+  return Number(booking?.totalCost) || 0;
+}
+
+export function reservationGst(booking) {
+  const tax = booking?.totalTax;
+  return tax != null && Number.isFinite(Number(tax)) ? Number(tax) : 0;
+}
+
+export function reservationGrandTotal(booking) {
+  const preTax = reservationPreTax(booking);
+  const gst = reservationGst(booking);
+  const sup = Number(booking?.supplementTotal) || 0;
+  return Math.round((preTax + gst + sup) * 100) / 100;
+}

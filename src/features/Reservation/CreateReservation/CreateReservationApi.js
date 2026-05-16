@@ -173,6 +173,20 @@ export const priceCalculation = async ({ data, dispatch }) => {
   }
 };
 
+export const fetchBookingQuote = async ({ data, dispatch }) => {
+  try {
+    const res = await axiosPbService.post('/book/quote', data);
+    if (res.status === 200) {
+      return res.data;
+    }
+    dispatch(showSnackbar({ type: 'error', message: res.data?.error || 'Unable to fetch tax quote' }));
+    return null;
+  } catch (error) {
+    dispatch(showSnackbar({ type: 'error', message: error.message || 'Server error' }));
+    return null;
+  }
+};
+
 export const availableRoomsByHotel = async ({ data, dispatch }) => {
   try {
     const res = await axiosPbService.post("/room/search/available-rooms", data);

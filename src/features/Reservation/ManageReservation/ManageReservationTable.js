@@ -35,7 +35,7 @@ import { store } from '../../../redux/store';
 import { fetchReservationList, updateTableState, fetchReservationListTableColumnConfig } from './manageReservationTableSlice';
 import { fetchLookupOptionsSearch, deleteReservation, cancelReservationFromControlPanel } from './ManageReservationApi';
 import ReservationDetailDrawer from './ReservationDetailDrawer';
-import { guestName, guestPhone, formatMoney, statusLabel, cpSourceLabel } from '../reservationDisplayUtils';
+import { guestName, guestPhone, formatMoney, statusLabel, cpSourceLabel, reservationGrandTotal } from '../reservationDisplayUtils';
 
 function dateShort(ymd) {
   if (!ymd) return '—';
@@ -638,7 +638,7 @@ function ManageReservationTable() {
 
                       <Box className="manage-reservation-card-item__bottom">
                         <Typography variant="body2" fontWeight={600} className="manage-reservation-card-item__amount">
-                          {formatMoney(row.totalCost)}
+                          {formatMoney(reservationGrandTotal(row))}
                         </Typography>
                       </Box>
                     </CardActionArea>

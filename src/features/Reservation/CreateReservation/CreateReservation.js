@@ -42,6 +42,7 @@ import {
 } from "./CreateReservationApi";
 import dayjs from "dayjs";
 import { FLOW_TYPE } from "../../../Utils/constants";
+import { reservationGst, reservationGrandTotal } from "../reservationDisplayUtils";
 import "./CreateReservation.scss";
 
 
@@ -1111,9 +1112,15 @@ function CreateReservation() {
 
             <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid", borderColor: "divider" }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                <Box sx={{ fontSize: 14 }}>{t("Room subtotal")}</Box>
+                <Box sx={{ fontSize: 14 }}>{t("Room subtotal (excl. GST)")}</Box>
                 <Box sx={{ fontSize: 14, fontWeight: 600 }}>
                   {formatInr(wizardMeta.totalCost)}
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Box sx={{ fontSize: 14 }}>{t("GST")}</Box>
+                <Box sx={{ fontSize: 14, fontWeight: 600 }}>
+                  {formatInr(reservationGst(wizardMeta))}
                 </Box>
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
@@ -1130,12 +1137,13 @@ function CreateReservation() {
                 <Box sx={{ fontSize: 15, fontWeight: 700 }}>{t("Grand total")}</Box>
                 <Box sx={{ fontSize: 15, fontWeight: 700 }}>
                   {formatInr(
-                    Number(wizardMeta.totalCost || 0) +
-                      Number(
+                    reservationGrandTotal({
+                      ...wizardMeta,
+                      supplementTotal:
                         wizardMeta.supplementTotal != null
                           ? wizardMeta.supplementTotal
-                          : computeSupplementFromRows()
-                      )
+                          : computeSupplementFromRows(),
+                    })
                   )}
                 </Box>
               </Box>
