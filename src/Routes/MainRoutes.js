@@ -24,6 +24,7 @@ const CreateCoupon = Loadable(lazy(() => import('../features/Coupon/CreateCoupon
 const CalendarView = Loadable(lazy(() => import('../features/CalendarView/CalendarView')));
 const ManageCancellation = Loadable(lazy(() => import('../features/Reservation/ManageCancellation/ManageCancellation')));
 const BookingHistory = Loadable(lazy(() => import('../features/BookingHistory/BookingHistory')));
+const ReportsPage = Loadable(lazy(() => import('../features/Reports/ReportsPage')));
 
 const MainRoutes = (user) => {
     const location = useLocation();
@@ -96,6 +97,10 @@ const MainRoutes = (user) => {
                 {
                     path: '/booking-database',
                     element: <BookingHistory />
+                },
+                {
+                    path: '/reports',
+                    element: <ReportsPage />
                 },
                 {
                     path: '/manage-cancellation',

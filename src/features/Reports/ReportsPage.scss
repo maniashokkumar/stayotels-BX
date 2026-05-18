@@ -1,0 +1,197 @@
+@import "../../assets/scss/theme-vars.module.scss";
+
+.reports-page {
+  .breadcrumb-wrapper.breadcrumb-wrapper--trail-only {
+    margin-bottom: 0 !important;
+
+    .breadcrumb {
+      padding: 2px 0 0;
+    }
+  }
+
+  .reports-layout {
+    margin-top: 0;
+    align-items: flex-start;
+  }
+
+  .reports-filters {
+    padding: 20px 18px 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    position: sticky;
+    top: 80px;
+  }
+
+  .reports-filter-section {
+    &__title {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+  }
+
+  .reports-hint {
+    display: block;
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+
+  .reports-divider {
+    margin: 12px 0;
+    border-color: #eef2f7;
+  }
+
+  .reports-period-chip {
+    cursor: pointer;
+    border-color: #cbd5e1;
+    color: #475569;
+    font-weight: 500;
+
+    &:hover {
+      border-color: $primaryMain;
+      color: $primaryMain;
+      background: rgba($primaryMain, 0.06);
+    }
+  }
+
+  .reports-date-field {
+    width: 100%;
+  }
+
+  .reports-checkbox {
+    margin: 8px 0 0;
+    align-items: center;
+    width: 100%;
+
+    .MuiCheckbox-root {
+      padding: 0 8px 0 0;
+      margin-left: -2px;
+    }
+
+    .MuiFormControlLabel-label {
+      font-size: 0.875rem;
+      color: #475569;
+      line-height: 1.25;
+      padding-top: 1px;
+    }
+  }
+
+  .reports-info-alert {
+    margin-top: 12px;
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e40af;
+  }
+
+  .reports-actions {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #eef2f7;
+  }
+
+  .reports-results {
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    min-height: 420px;
+    overflow: hidden;
+  }
+
+  .reports-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 380px;
+    padding: 48px 24px;
+    text-align: center;
+
+    &__icon {
+      font-size: 56px !important;
+      color: #cbd5e1;
+      margin-bottom: 16px;
+    }
+  }
+
+  .reports-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef2f7;
+    background: #f8fafc;
+
+    &__meta {
+      min-width: 0;
+    }
+
+    &__actions {
+      flex-shrink: 0;
+    }
+  }
+
+  .reports-table-wrap {
+    max-height: calc(100vh - 280px);
+    min-height: 200px;
+  }
+
+  .reports-table-head-cell {
+    font-weight: 700 !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b !important;
+    background: #f8fafc !important;
+    white-space: nowrap;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  .reports-table-row {
+    &:nth-of-type(even) {
+      background: #fafbfc;
+    }
+  }
+
+  .reports-table-num {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+  }
+
+  .reports-table-total-row {
+    background: #f1f5f9 !important;
+
+    td {
+      font-weight: 700 !important;
+      color: #0f172a;
+      border-top: 2px solid #cbd5e1 !important;
+    }
+  }
+
+  .reports-footer-note {
+    display: block;
+    padding: 12px 20px 16px;
+    border-top: 1px solid #eef2f7;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 1199px) {
+    .reports-filters {
+      position: static;
+    }
+
+    .reports-table-wrap {
+      max-height: 520px;
+    }
+  }
+}

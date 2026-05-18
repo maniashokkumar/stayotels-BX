@@ -60,6 +60,14 @@ export default function SideDrawer(props) {
       lastChild: false
     },
     {
+      id: "reports",
+      title: t('Reports'),
+      url: "/reports",
+      icon: "reports",
+      isLast: false,
+      lastChild: false
+    },
+    {
       id: "cancellations",
       title: t('Cancellations'),
       url: "/manage-cancellation",
@@ -135,6 +143,9 @@ export default function SideDrawer(props) {
       return false;
     }
     if (menuItem.id === 'user' && !permissions.includes("USER:VIEW")) {
+      return false;
+    }
+    if (menuItem.id === 'reports' && !permissions.includes("REPORT:VIEW") && !permissions.includes("RESERVATION:VIEW")) {
       return false;
     }
     return true;

@@ -206,7 +206,11 @@ input:-webkit-autofill:active {
 
   &.coupons {
     background-image: url("../../assets/icons/coupons.svg");
-  } 
+  }
+
+  &.reports {
+    background-image: url("../../assets/icons/price.svg");
+  }
 }
 
 /* energyCard css -starts- */
