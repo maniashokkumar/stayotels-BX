@@ -1,1 +1,0 @@
-{"version":3,"file":"static/css/501.ca96a430.chunk.css","mappings":"AAEA,uBACE","sources":["features/Location/ManageLocation/ManageLocationTable.scss"],"sourcesContent":["@import \"../../../assets//scss//theme-vars.module.scss\";\n\n.manage-location-table {\n  position: relative;\n}\n"],"names":[],"ignoreList":[],"sourceRoot":""}

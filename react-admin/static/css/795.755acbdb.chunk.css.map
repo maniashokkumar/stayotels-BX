@@ -1,1 +1,0 @@
-{"version":3,"file":"static/css/795.755acbdb.chunk.css","mappings":"AAEA,oBACE","sources":["features/Hotel/ManageHotel/ManageHotelTable.scss"],"sourcesContent":["@import \"../../../assets//scss//theme-vars.module.scss\";\n\n.manage-hotel-table {\n  position: relative;\n}\n"],"names":[],"ignoreList":[],"sourceRoot":""}

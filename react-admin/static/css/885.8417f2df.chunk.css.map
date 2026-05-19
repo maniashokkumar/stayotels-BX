@@ -1,1 +1,0 @@
-{"version":3,"file":"static/css/885.8417f2df.chunk.css","mappings":"AAEA,oBACE","sources":["features/Price/ManagePrice/ManagePriceTable.scss"],"sourcesContent":["@import \"../../../assets//scss//theme-vars.module.scss\";\n\n.manage-price-table {\n  position: relative;\n}\n"],"names":[],"ignoreList":[],"sourceRoot":""}

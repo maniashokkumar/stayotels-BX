@@ -1,1 +1,0 @@
-{"version":3,"file":"static/css/406.2b9ae37f.chunk.css","mappings":"AAEA,wBACE","sources":["features/Amenities/ManageAmenities/ManageAmenitiesTable.scss"],"sourcesContent":["@import \"../../../assets//scss//theme-vars.module.scss\";\n\n.manage-amenities-table {\n  position: relative;\n}\n"],"names":[],"ignoreList":[],"sourceRoot":""}
