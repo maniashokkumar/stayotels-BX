@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
-import { Box, IconButton, Typography, Divider, Stack, Button, TextField, MenuItem, Tooltip } from '@mui/material';
+import {
+  Box,
+  IconButton,
+  Typography,
+  Divider,
+  Stack,
+  Button,
+  TextField,
+  MenuItem,
+  Tooltip,
+  FormControlLabel,
+  Checkbox,
+} from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import dayjs from 'dayjs';
@@ -12,6 +24,8 @@ import {
   collectReservationPayment,
   updateReservation,
   updateReservationRefundStatus,
+  fetchHotelMealPlansActive,
+  updateReservationMealPlan,
 } from '../CreateReservation/CreateReservationApi';
 import { showSnackbar } from '../../../redux/reducer/appSlice';
 import {
@@ -22,6 +36,13 @@ import {
   reservationGst,
   reservationGrandTotal,
   reservationPreTax,
+  reservationMealPreTax,
+  reservationMealGst,
+  reservationRoomPreTax,
+  reservationRoomGst,
+  mealPlanDisplayLabel,
+  reservationMeals,
+  roomLineMealLabel,
   statusLabel,
   channelLabel,
   cpSourceLabel,
@@ -31,6 +52,8 @@ import {
 } from '../reservationDisplayUtils';
 import { DetailRow, SectionCard } from '../ReservationDrawerShared';
 import GstSummary from '../../../components/GstSummary/GstSummary';
+import MealReservationSection from '../MealReservationSection';
+import { gstSummaryMealProps } from '../mealsBlockUtils';
 import {
   buildBookingQuotePayload,
   buildCpQuoteRoomsFromForm,
@@ -38,8 +61,16 @@ import {
   isQuoteReady,
 } from '../../../Utils/gstQuoteUtils';
 import { fetchBookingQuote } from '../CreateReservation/CreateReservationApi';
+import { dropdownLabel, mealPlanCodeOption } from '../../Hotel/HotelMealPlans/mealPlanCodeOptions';
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
+
+function mealPlanSelectLabel(plan, t) {
+  if (!plan) return '';
+  const opt = mealPlanCodeOption(plan.code);
+  if (opt) return dropdownLabel(opt, t);
+  return `${plan.code} — ${plan.name}`;
+}
 
 function normalizeRefundStatusForEdit(code) {
   const c = (code || 'PENDING').toUpperCase();
@@ -97,6 +128,10 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
   const [editQuoteLoading, setEditQuoteLoading] = useState(false);
   const [editQuoteError, setEditQuoteError] = useState(null);
   const [editQuoteSummary, setEditQuoteSummary] = useState(null);
+  const [hotelMealPlans, setHotelMealPlans] = useState([]);
+  const [selectedMealPlanId, setSelectedMealPlanId] = useState('');
+  const [initialMealPlanId, setInitialMealPlanId] = useState('');
+  const [mealPlanPreview, setMealPlanPreview] = useState(null);
 
   useEffect(() => {
     setEditMode(false);
@@ -117,6 +152,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
             roomName: l.roomName || l.roomId || '',
             noOfRooms: String(l.noOfRooms ?? 1),
             noOfPersons: String(l.noOfPersons ?? 1),
+            mealPlanId: l.mealPlanId || '',
             lineTotal: l.lineTotal ?? null,
           }))
         : []
@@ -125,6 +161,11 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     setCollectMethod('CASH');
     setCollectRef('');
     setCollectMode(false);
+    const mpId = reservationMeals(reservation).planId || '';
+    setSelectedMealPlanId(mpId);
+    setInitialMealPlanId(mpId);
+    setHotelMealPlans([]);
+    setMealPlanPreview(null);
   }, [reservation]);
 
   useEffect(() => {
@@ -135,6 +176,38 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     const r = reservation?.rooms || '';
     return r.includes(',');
   }, [reservation?.rooms]);
+
+  const canEditMealPlan = useMemo(() => {
+    const st = (reservation?.status || '').toUpperCase();
+    return st === 'CONFIRMED' || st === 'HOTEL_BLOCKED';
+  }, [reservation?.status]);
+
+  const mealNights = useMemo(() => {
+    if (editMode && form.checkInDate && form.checkOutDate) {
+      const n = dayjs(form.checkOutDate).diff(dayjs(form.checkInDate), 'day');
+      return Number.isFinite(n) && n > 0 ? n : 1;
+    }
+    const n = nightsBetween(reservation?.checkIn, reservation?.checkOut);
+    return n === '—' ? 1 : Number(n);
+  }, [editMode, form.checkInDate, form.checkOutDate, reservation?.checkIn, reservation?.checkOut]);
+
+  const mealGuests = useMemo(() => {
+    if (editMode) {
+      if (isMultiRoomReservation && roomLineEdits.length > 1) {
+        const total = roomLineEdits.reduce((s, l) => s + (Number(l.noOfPersons) || 0), 0);
+        return total > 0 ? total : 1;
+      }
+      const p = Number(form.cdnintnoOfPersons);
+      if (Number.isFinite(p) && p > 0) return p;
+    }
+    return displayAdultGuestCount(reservation) || Number(reservation?.noOfPersons) || 1;
+  }, [
+    editMode,
+    form.cdnintnoOfPersons,
+    roomLineEdits,
+    isMultiRoomReservation,
+    reservation,
+  ]);
 
   useEffect(() => {
     if (!editMode || !reservation?.hotelId || !form.checkInDate || !form.checkOutDate) return;
@@ -163,6 +236,42 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     };
   }, [editMode, reservation?.hotelId, form.checkInDate, form.checkOutDate, form.roomId, isMultiRoomReservation, dispatch]);
 
+  useEffect(() => {
+    if (!editMode || !canEditMealPlan || !reservation?.hotelId) return undefined;
+    let cancelled = false;
+    fetchHotelMealPlansActive({ hotelId: reservation.hotelId, dispatch }).then((plans) => {
+      if (cancelled) return;
+      const list = Array.isArray(plans) ? plans : [];
+      setHotelMealPlans(list);
+      if (!selectedMealPlanId && list.length > 0) {
+        const ep = list.find((p) => p.code === 'EP');
+        setSelectedMealPlanId(ep?.mealPlanId || list[0]?.mealPlanId || '');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editMode, canEditMealPlan, reservation?.hotelId, dispatch]);
+
+  useEffect(() => {
+    if (!editMode) return;
+    const plan = hotelMealPlans.find((p) => p.mealPlanId === selectedMealPlanId);
+    if (!plan) {
+      setMealPlanPreview(null);
+      return;
+    }
+    const price = Number(plan.pricePerPersonPerNight) || 0;
+    const preTax = Math.round(price * mealGuests * mealNights * 100) / 100;
+    const gstRate =
+      plan.gstRatePercent != null
+        ? Number(plan.gstRatePercent)
+        : plan.category === 'LUXURY'
+          ? 18
+          : 5;
+    const tax = Math.round((preTax * gstRate) / 100 * 100) / 100;
+    setMealPlanPreview({ preTax, tax, gstRate, price });
+  }, [editMode, selectedMealPlanId, hotelMealPlans, mealGuests, mealNights]);
+
   const selectedRoom = useMemo(
     () => roomOptions.find((r) => r?.roomId === form.roomId) || null,
     [roomOptions, form.roomId]
@@ -173,43 +282,17 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [form.checkInDate, form.checkOutDate]);
 
-  const livePreviewTotal = useMemo(() => {
-    if (!editMode || liveNights == null) return null;
-
-    if (isMultiRoomReservation && roomLineEdits.length > 1) {
-      // Multi-room: sum each line's qty × basePrice × nights
-      if (roomOptions.length === 0) return null; // prices not loaded yet
-      let total = 0;
-      for (const line of roomLineEdits) {
-        const qty = Number(line.noOfRooms);
-        if (!Number.isFinite(qty) || qty <= 0) return null;
-        const roomOpt = roomOptions.find((r) => r?.roomId === line.roomId);
-        if (!roomOpt) return null; // room not in options yet
-        const basePrice = Number(roomOpt.basePrice);
-        if (!Number.isFinite(basePrice) || basePrice <= 0) return null;
-        total += basePrice * qty * liveNights;
-      }
-      return total;
-    }
-
-    // Single-room
-    if (!selectedRoom) return null;
-    const basePrice = Number(selectedRoom?.basePrice);
-    const rooms = Number(form.noofRooms);
-    if (!Number.isFinite(basePrice) || basePrice <= 0) return null;
-    if (!Number.isFinite(rooms) || rooms <= 0) return null;
-    return basePrice * rooms * liveNights;
-  }, [editMode, selectedRoom, form.noofRooms, liveNights, isMultiRoomReservation, roomLineEdits, roomOptions]);
-
-
-  const liveDelta = useMemo(() => {
-    if (livePreviewTotal == null) return null;
-    return livePreviewTotal - Number(reservation?.totalCost || 0);
-  }, [livePreviewTotal, reservation?.totalCost]);
-
   const persistedPreTax = reservationPreTax(reservation);
   const persistedGst = reservationGst(reservation);
   const persistedGrand = reservationGrandTotal(reservation);
+
+  const mealLabel = mealPlanDisplayLabel(reservation, t);
+  const viewMealPreTax = reservationMealPreTax(reservation);
+  const viewRoomPreTax = reservationRoomPreTax(reservation);
+  const viewMealGst = reservationMealGst(reservation);
+  const viewRoomGst = reservationRoomGst(reservation);
+
+  const showMealTaxSplit = viewMealPreTax > 0.01 || viewMealGst > 0.01;
 
   const editQuotePayload = useMemo(() => {
     if (!editMode || !reservation?.hotelId || !form.checkInDate || !form.checkOutDate) return null;
@@ -219,6 +302,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
       roomLineEdits,
       form,
       roomOptions,
+      defaultMealPlanId: selectedMealPlanId || null,
     });
     if (!selectedRooms?.length) return null;
     return buildBookingQuotePayload({
@@ -238,6 +322,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     roomLineEdits,
     roomOptions,
     isMultiRoomReservation,
+    selectedMealPlanId,
   ]);
 
   useEffect(() => {
@@ -274,8 +359,9 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
   const persistedCgstSgst = useMemo(() => {
     const rows = reservation?.taxBreakdown;
     if (!Array.isArray(rows) || rows.length === 0) {
-      const half = persistedGst / 2;
-      return { cgst: half, sgst: persistedGst - half };
+      const roomGstBase = showMealTaxSplit ? viewRoomGst : persistedGst;
+      const half = roomGstBase / 2;
+      return { cgst: half, sgst: roomGstBase - half };
     }
     let cgst = 0;
     let sgst = 0;
@@ -284,22 +370,83 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
       sgst += Number(r.sgst) || 0;
     }
     return { cgst, sgst };
-  }, [reservation?.taxBreakdown, persistedGst]);
+  }, [reservation?.taxBreakdown, persistedGst, showMealTaxSplit, viewRoomGst]);
+
+  const editQuoteReady = isQuoteReady(editQuoteSummary, editQuoteLoading, editQuoteError);
+  const mealPlanChanged =
+    editMode && selectedMealPlanId && selectedMealPlanId !== initialMealPlanId;
+  const editMealGstDisplay = mealPlanChanged ? mealPlanPreview?.tax ?? 0 : viewMealGst;
+
+  const editQuoteMeals = useMemo(() => {
+    if (!editMode || !editQuoteReady) return null;
+    if (mealPlanChanged && mealPlanPreview) {
+      const plan = hotelMealPlans.find((p) => p.mealPlanId === selectedMealPlanId);
+      return {
+        displayName: plan?.name ?? '',
+        totalPreTax: mealPlanPreview.preTax ?? 0,
+        totalTax: mealPlanPreview.tax ?? 0,
+        gstRatePercent: mealPlanPreview.gstRate ?? null,
+        mixedPlans: false,
+        lines: [],
+      };
+    }
+    return editQuoteSummary?.meals ?? null;
+  }, [
+    editMode,
+    editQuoteReady,
+    mealPlanChanged,
+    mealPlanPreview,
+    selectedMealPlanId,
+    hotelMealPlans,
+    editQuoteSummary?.meals,
+  ]);
 
   const displayPreTax = editMode
-    ? editQuoteSummary?.preTax ?? livePreviewTotal ?? persistedPreTax
-    : persistedPreTax;
-  const displayGst = editMode ? editQuoteSummary?.gst ?? persistedGst : persistedGst;
+    ? editQuoteReady
+      ? roundMoney(editQuoteSummary.preTax)
+      : showMealTaxSplit
+        ? roundMoney(viewRoomPreTax + viewMealPreTax)
+        : persistedPreTax
+    : showMealTaxSplit
+      ? roundMoney(viewRoomPreTax + viewMealPreTax)
+      : persistedPreTax;
+  const displayRoomGst =
+    editMode && editQuoteReady
+      ? roundMoney(editQuoteSummary.roomTax ?? editQuoteSummary.gst)
+      : showMealTaxSplit
+        ? viewRoomGst
+        : persistedGst;
+  const displayMealGst =
+    editMode && editQuoteReady
+      ? roundMoney(editQuoteSummary.mealTax ?? editMealGstDisplay)
+      : showMealTaxSplit
+        ? viewMealGst
+        : 0;
+  const displayMealGstRate =
+    editMode && mealPlanChanged && mealPlanPreview?.gstRate != null
+      ? mealPlanPreview.gstRate
+      : reservationMeals(reservation).gstRatePercent != null
+        ? Number(reservationMeals(reservation).gstRatePercent)
+        : null;
   const displayCgst = editMode ? editQuoteSummary?.cgst ?? 0 : persistedCgstSgst.cgst;
   const displaySgst = editMode ? editQuoteSummary?.sgst ?? 0 : persistedCgstSgst.sgst;
-  const editQuoteReady = isQuoteReady(editQuoteSummary, editQuoteLoading, editQuoteError);
   const displayGrand = editMode
     ? editQuoteReady
-      ? editQuoteSummary.total
+      ? roundMoney(editQuoteSummary.total)
       : persistedGrand
     : persistedGrand;
   const supplementTotal = Number(reservation?.supplementTotal) || 0;
   const totalPayableDisplay = roundMoney(displayGrand + supplementTotal);
+
+  /** Room-only delta from pricing quote vs saved room pre-tax (not merged totalCost). */
+  const editRoomPreTaxPreview = editQuoteReady ? editQuoteSummary.roomPreTax : null;
+  const roomPriceDelta = useMemo(() => {
+    if (!editMode || editRoomPreTaxPreview == null) return null;
+    const delta = roundMoney(editRoomPreTaxPreview - viewRoomPreTax);
+    return Math.abs(delta) < 0.01 ? null : delta;
+  }, [editMode, editRoomPreTaxPreview, viewRoomPreTax]);
+
+  const showEditChangePreview = editMode && (roomPriceDelta != null || mealPlanChanged);
 
   function roundMoney(v) {
     return Math.round((Number(v) || 0) * 100) / 100;
@@ -327,8 +474,11 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
         return t('Max capacity exceeded for selected room type');
       }
     }
+    if (canEditMealPlan && hotelMealPlans.length > 0 && !selectedMealPlanId) {
+      return t('Please select a meal plan');
+    }
     return '';
-  }, [editMode, form, selectedRoom, t]);
+  }, [editMode, form, selectedRoom, canEditMealPlan, hotelMealPlans.length, selectedMealPlanId, t]);
 
   const handleSave = async () => {
     if (!reservation?.reservationId || formError) return;
@@ -367,16 +517,45 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
         changeType: 'AMENDMENT',
       };
     }
+    const mealChanged =
+      canEditMealPlan && selectedMealPlanId && selectedMealPlanId !== initialMealPlanId;
+    const stayOrGuestsChanged =
+      reservation &&
+      ((form.checkInDate && dayjs(form.checkInDate).format('YYYY-MM-DD') !== dayjs(reservation.checkIn).format('YYYY-MM-DD')) ||
+        (form.checkOutDate &&
+          dayjs(form.checkOutDate).format('YYYY-MM-DD') !== dayjs(reservation.checkOut).format('YYYY-MM-DD')) ||
+        String(form.noofRooms) !== String(reservation.noOfRooms ?? '') ||
+        String(form.cdnintnoOfPersons) !== String(reservation.noOfPersons ?? '') ||
+        (form.roomId && form.roomId !== (reservation.roomId || '')));
+    const needsMealReprice =
+      canEditMealPlan && selectedMealPlanId && (mealChanged || stayOrGuestsChanged);
+
     const ok = await updateReservation({
       data: body,
       reservationId: reservation.reservationId,
       dispatch,
     });
-    setSaving(false);
-    if (ok === 'Success') {
-      setEditMode(false);
-      if (onSaved) await onSaved();
+    if (ok !== 'Success') {
+      setSaving(false);
+      return;
     }
+    if (needsMealReprice) {
+      const mealR = await updateReservationMealPlan({
+        body: {
+          reservationId: reservation.reservationId,
+          mealPlanId: selectedMealPlanId,
+        },
+        dispatch,
+      });
+      if (!mealR) {
+        setSaving(false);
+        if (onSaved) await onSaved();
+        return;
+      }
+    }
+    setSaving(false);
+    setEditMode(false);
+    if (onSaved) await onSaved();
   };
 
   const payableTotal = reservation ? payableGrandTotal(reservation) : 0;
@@ -559,6 +738,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {line.noOfRooms} {t('room(s)')} · {line.noOfPersons} {t('guest(s)')}
+                              {roomLineMealLabel(line) ? ` · ${roomLineMealLabel(line)}` : ''}
                             </Typography>
                           </Box>
                           {line.lineTotal != null ? (
@@ -692,15 +872,91 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                   </Stack>
                 </LocalizationProvider>
               )}
+
+              {!editMode ? <MealReservationSection booking={reservation} showPriceSplit={false} /> : null}
+
+              {editMode && canEditMealPlan ? (
+                <Box sx={{ mt: 1.5, mb: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    {t('Meal plan')}
+                  </Typography>
+                  {hotelMealPlans.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {t('No meal plans configured for this hotel. Configure them under Hotel → Edit.')}
+                    </Typography>
+                  ) : (
+                    <>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 }, mb: 1 }}>
+                        {hotelMealPlans.map((plan) => {
+                          const selected = selectedMealPlanId === plan.mealPlanId;
+                          return (
+                            <FormControlLabel
+                              key={plan.mealPlanId}
+                              sx={{
+                                m: 0,
+                                px: 1.25,
+                                py: 0.5,
+                                borderRadius: 1,
+                                border: '1px solid',
+                                borderColor: selected ? 'primary.main' : 'divider',
+                                bgcolor: selected ? 'action.selected' : 'transparent',
+                              }}
+                              control={
+                                <Checkbox
+                                  checked={selected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedMealPlanId(plan.mealPlanId);
+                                    }
+                                  }}
+                                  size="small"
+                                />
+                              }
+                              label={
+                                <Typography variant="body2" component="span">
+                                  {mealPlanSelectLabel(plan, t)}
+                                </Typography>
+                              }
+                            />
+                          );
+                        })}
+                      </Box>
+                      {mealPlanPreview && selectedMealPlanId !== initialMealPlanId ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('Meals (excl. GST)')}: {formatMoney(mealPlanPreview.preTax)}
+                          {mealPlanPreview.tax > 0
+                            ? ` · ${t('Meal GST')} (${mealPlanPreview.gstRate}%): ${formatMoney(mealPlanPreview.tax)}`
+                            : ''}
+                        </Typography>
+                      ) : null}
+                    </>
+                  )}
+                </Box>
+              ) : null}
+
               <Divider sx={{ my: 1.5 }} />
               
               <GstSummary
                 compact
                 ready={editMode ? editQuoteReady : true}
                 preTax={displayPreTax}
-                gst={displayGst}
+                roomPreTax={
+                  editMode && editQuoteReady
+                    ? editQuoteSummary.roomPreTax
+                    : showMealTaxSplit
+                      ? viewRoomPreTax
+                      : null
+                }
+                {...gstSummaryMealProps(
+                  editMode
+                    ? editQuoteMeals ?? reservationMeals(reservation)
+                    : reservationMeals(reservation)
+                )}
+                gst={displayRoomGst}
                 cgst={displayCgst}
                 sgst={displaySgst}
+                mealGst={displayMealGst}
+                mealGstRatePercent={displayMealGstRate}
                 total={displayGrand}
                 ratePercent={editMode ? editQuoteSummary?.ratePercent : null}
                 mixedRates={editMode ? editQuoteSummary?.mixedRates : false}
@@ -749,54 +1005,48 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                 </Typography>
               </Stack>
 
-              {editMode ? (
+              {showEditChangePreview ? (
                 <>
-                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ddd' }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('Updated total (includes previewed rooms)')}
-                    </Typography>
-                    <Typography variant="h6" fontWeight={800} color="secondary">
-                      {livePreviewTotal != null ? formatMoney(livePreviewTotal) : '—'}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 0.25 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('Difference')}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        px: liveDelta == null ? 0 : 1,
-                        py: liveDelta == null ? 0 : 0.35,
-                        borderRadius: 1,
-                        fontWeight: 800,
-                        fontSize: '0.88rem',
-                        lineHeight: 1.2,
-                        color:
-                          liveDelta == null
-                            ? 'text.secondary'
-                            : liveDelta < 0
-                              ? 'success.dark'
-                              : liveDelta > 0
-                                ? 'error.main'
-                                : 'text.secondary',
-                        bgcolor:
-                          liveDelta == null
-                            ? 'transparent'
-                            : liveDelta < 0
-                              ? 'success.50'
-                              : liveDelta > 0
-                                ? 'error.50'
-                                : 'grey.100',
-                      }}
-                    >
-                      {liveDelta == null
-                        ? '—'
-                        : `${liveDelta > 0 ? '+' : ''}${formatMoney(liveDelta)}`}
-                    </Typography>
-                  </Stack>
-                  {livePreviewTotal == null ? (
+                  {roomPriceDelta != null ? (
+                    <>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="baseline"
+                        sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ddd' }}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          {t('Updated room total (excl. GST)')}
+                        </Typography>
+                        <Typography variant="body1" fontWeight={700} color="secondary">
+                          {formatMoney(editRoomPreTaxPreview)}
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mt: 0.25 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {t('Room price change')}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            px: 1,
+                            py: 0.35,
+                            borderRadius: 1,
+                            fontWeight: 800,
+                            fontSize: '0.88rem',
+                            lineHeight: 1.2,
+                            color: roomPriceDelta < 0 ? 'success.dark' : 'error.main',
+                            bgcolor: roomPriceDelta < 0 ? 'success.50' : 'error.50',
+                          }}
+                        >
+                          {`${roomPriceDelta > 0 ? '+' : ''}${formatMoney(roomPriceDelta)}`}
+                        </Typography>
+                      </Stack>
+                    </>
+                  ) : null}
+                  {mealPlanChanged && mealPlanPreview ? (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                      {t('Live preview unavailable for selected values. Final amount is validated on save.')}
+                      {t('Meal plan change')}: {formatMoney(mealPlanPreview.preTax + mealPlanPreview.tax)}{' '}
+                      {t('incl. meal GST')}
                     </Typography>
                   ) : null}
                 </>

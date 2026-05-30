@@ -58,9 +58,82 @@
     letter-spacing: 0.02em;
   }
 
-  .booking-history-card-item__chip .MuiChip-label {
+  .booking-history-card-item__status {
+    height: 22px;
     font-weight: 600;
+
+    .MuiChip-label {
+      font-weight: 600;
+      font-size: 0.7rem;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+  }
+
+  .booking-history-card-item__status--confirmed,
+  .booking-history-card-item__status--completed,
+  .booking-history-card-item__status--pending,
+  .booking-history-card-item__status--blocked {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+
+  .booking-history-card-item__status--cancelled {
+    background: #dc2626 !important;
+    color: #fff !important;
+    border: 1px solid #b91c1c !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .booking-history-card-item--cancelled .booking-history-card-item__top {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  }
+
+  .booking-history-card-item__meta {
+    display: block;
+    padding: 0 14px 4px;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: #64748b;
+  }
+
+  .booking-history-card-item__meals {
+    padding: 2px 14px 8px;
+    min-height: 28px;
+  }
+
+  .booking-history-card-item__meal-chip {
+    height: 24px;
+    max-width: 100%;
     font-size: 0.7rem;
+    font-weight: 600;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+
+    .MuiChip-label {
+      padding-left: 8px;
+      padding-right: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .MuiChip-icon {
+      font-size: 14px;
+      margin-left: 6px;
+      color: #94a3b8;
+    }
+  }
+
+  .booking-history-card-item__meal-chip--paid {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+
+    .MuiChip-icon {
+      color: #2563eb;
+    }
   }
 
   .booking-history-card-item__name-row {
@@ -120,14 +193,31 @@
   .booking-history-card-item__bottom {
     display: flex;
     justify-content: flex-end;
-    align-items: center;
-    padding: 8px 14px 12px;
-    background: #fff;
+    align-items: flex-end;
+    padding: 10px 14px 12px;
+    background: #f8fafc;
     border-top: 1px solid #f1f5f9;
+  }
+
+  .booking-history-card-item__pricing {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .booking-history-card-item__meals-amt {
+    font-size: 0.7rem;
+    line-height: 1.3;
+    color: #64748b !important;
   }
 
   .booking-history-card-item__amount {
     color: #0f172a;
+    font-size: 1rem !important;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
   }
 
   /* Pagination: no horizontal scroll on narrow viewports; stack / wrap instead */

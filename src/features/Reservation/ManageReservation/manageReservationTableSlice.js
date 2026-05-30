@@ -85,6 +85,8 @@ const initialState = {
 
   flow: FLOW_TYPE.NEW,
   selectedReservationData: null,
+  /** Hotel filter on manage list — used when opening Create Reservation */
+  prefillHotelId: '',
 };
 
 export const manageReservationTableReducer = createSlice({

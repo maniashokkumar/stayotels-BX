@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Collapse,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -29,21 +30,39 @@ import {
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { fetchLookupList, showSnackbar } from "../../../redux/reducer/appSlice";
 import { updateTableState } from "../../Reservation/ManageReservation/manageReservationTableSlice";
 import {
   createReservation,
   completeGuestBilling,
   completeAddOns,
+  completeMealPlan,
   completePayments,
   completeFinalize,
   hotelList,
   availableRoomsByHotel,
+  fetchHotelMealPlansActive,
 } from "./CreateReservationApi";
 import dayjs from "dayjs";
 import { FLOW_TYPE } from "../../../Utils/constants";
-import { reservationGst, reservationGrandTotal } from "../reservationDisplayUtils";
+import {
+  reservationGst,
+  reservationGrandTotal,
+  reservationRoomGst,
+  reservationMealPreTax,
+  reservationMealGst,
+  mealPlanDisplayLabel,
+} from "../reservationDisplayUtils";
+import { dropdownLabel, mealPlanCodeOption } from "../../Hotel/HotelMealPlans/mealPlanCodeOptions";
 import "./CreateReservation.scss";
+
+function mealPlanSelectLabel(plan, t) {
+  if (!plan) return "";
+  const opt = mealPlanCodeOption(plan.code);
+  if (opt) return dropdownLabel(opt, t);
+  return `${plan.code} — ${plan.name}`;
+}
 
 
 function CreateReservation() {
@@ -56,6 +75,9 @@ function CreateReservation() {
   const flow = useSelector((state) => state.manageReservationTableReducer.flow);
   const selectedReservationData = useSelector(
     (state) => state.manageReservationTableReducer.selectedReservationData
+  );
+  const prefillHotelIdFromStore = useSelector(
+    (state) => state.manageReservationTableReducer.prefillHotelId
   );
   const showSessionPopup = useSelector(
     (state) => state.loginReducer.showSessionPopup
@@ -72,7 +94,7 @@ function CreateReservation() {
   const WIZARD_STEP_LABELS = [
     "Room block",
     "Guest",
-    "Add-ons",
+    "Meals & add-ons",
     "Summary",
     "Payments",
   ];
@@ -120,6 +142,10 @@ function CreateReservation() {
     phoneNumber: "",
   });
   const [addonRows, setAddonRows] = useState([{ label: "", unitPrice: "", quantity: "1" }]);
+  const [hotelMealPlans, setHotelMealPlans] = useState([]);
+  const [selectedMealPlanId, setSelectedMealPlanId] = useState("");
+  const [mealPlanPreview, setMealPlanPreview] = useState(null);
+  const [mealBreakdownOpen, setMealBreakdownOpen] = useState(false);
   const [paymentRows, setPaymentRows] = useState([
     { method: "CASH", amount: "", reference: "" },
   ]);
@@ -279,6 +305,17 @@ function CreateReservation() {
     const block = location.state && location.state.inventoryBlock;
     if (block && block.hotelId) return;
 
+    const prefillFromNav = location.state?.prefillHotelId;
+    const prefill = prefillFromNav || prefillHotelIdFromStore;
+    if (prefill && hotelListData.some((h) => h.value === prefill)) {
+      const currentId = getValues("hotelId");
+      if (currentId !== prefill) {
+        setSelectedHotel(prefill);
+        setValue("hotelId", prefill, { shouldValidate: true, shouldDirty: true });
+      }
+      return;
+    }
+
     const currentId = getValues("hotelId");
     if (currentId && hotelListData.some((h) => h.value === currentId)) {
       return;
@@ -293,6 +330,7 @@ function CreateReservation() {
     watchCheckInDate,
     watchCheckOutDate,
     location.state,
+    prefillHotelIdFromStore,
     getValues,
     setValue,
   ]);
@@ -312,10 +350,12 @@ function CreateReservation() {
       reservationId: cb.reservationId,
       orderId: cb.orderId,
       totalCost: cb.totalCost,
+      totalTax: cb.totalTax,
       checkIn: cb.checkIn,
       checkOut: cb.checkOut,
       noOfRooms: cb.noOfRooms,
       noOfPersons: cb.noOfPersons,
+      hotelId: cb.hotelId,
       hotelLabel: cb.hotels,
       roomLabel: cb.rooms,
     });
@@ -757,6 +797,46 @@ function CreateReservation() {
         return sum + p * q;
       }, 0);
 
+  const mealNights = useMemo(() => {
+    if (!wizardMeta?.checkIn || !wizardMeta?.checkOut) return 1;
+    const n = dayjs(wizardMeta.checkOut).diff(dayjs(wizardMeta.checkIn), "day");
+    return Math.max(1, n);
+  }, [wizardMeta?.checkIn, wizardMeta?.checkOut]);
+
+  const mealGuests = wizardMeta?.noOfPersons || 1;
+
+  const computeMealPreview = (plan) => {
+    if (!plan) return null;
+    const price = Number(plan.pricePerPersonPerNight) || 0;
+    const preTax = Math.round(price * mealGuests * mealNights * 100) / 100;
+    const gstRate =
+      plan.gstRatePercent != null
+        ? Number(plan.gstRatePercent)
+        : plan.category === "LUXURY"
+          ? 18
+          : 5;
+    const tax = Math.round((preTax * gstRate) / 100 * 100) / 100;
+    return { preTax, tax, gstRate, price };
+  };
+
+  useEffect(() => {
+    if (wizardStep !== 2 || !wizardMeta?.hotelId) return;
+    fetchHotelMealPlansActive({ hotelId: wizardMeta.hotelId, dispatch }).then((plans) => {
+      const list = Array.isArray(plans) ? plans : [];
+      setHotelMealPlans(list);
+      if (!selectedMealPlanId) {
+        const ep = list.find((p) => p.code === "EP");
+        setSelectedMealPlanId(ep?.mealPlanId || list[0]?.mealPlanId || "");
+      }
+    });
+  }, [wizardStep, wizardMeta?.hotelId, dispatch]);
+
+  useEffect(() => {
+    const plan = hotelMealPlans.find((p) => p.mealPlanId === selectedMealPlanId);
+    setMealPlanPreview(computeMealPreview(plan));
+    setMealBreakdownOpen(false);
+  }, [selectedMealPlanId, hotelMealPlans, mealGuests, mealNights]);
+
   const handleGuestNext = async () => {
     if (!wizardMeta?.reservationId) return;
     let phone = guestForm.phoneNumber || "";
@@ -778,6 +858,10 @@ function CreateReservation() {
 
   const handleAddOnsNext = async () => {
     if (!wizardMeta?.reservationId) return;
+    if (!selectedMealPlanId) {
+      dispatch(showSnackbar({ type: "error", message: t("Please select a meal plan") }));
+      return;
+    }
     const addOns = addonRows
       .filter((row) => (row.label || "").trim().length > 0)
       .map((row) => ({
@@ -786,6 +870,17 @@ function CreateReservation() {
         quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
       }));
     setOnSumbitLoader(true);
+    const mealR = await completeMealPlan({
+      body: {
+        reservationId: wizardMeta.reservationId,
+        mealPlanId: selectedMealPlanId,
+      },
+      dispatch,
+    });
+    if (!mealR) {
+      setOnSumbitLoader(false);
+      return;
+    }
     const r = await completeAddOns({
       body: {
         reservationId: wizardMeta.reservationId,
@@ -800,8 +895,17 @@ function CreateReservation() {
         typeof r.supplementTotal === "number"
           ? r.supplementTotal
           : computeSupplementFromRows();
+      const selectedPlan = hotelMealPlans.find((p) => p.mealPlanId === selectedMealPlanId);
       setWizardMeta((m) =>
-        m ? { ...m, supplementTotal: sup } : m
+        m
+          ? {
+              ...m,
+              supplementTotal: sup,
+              meals: mealR.meals ?? m.meals,
+              totalTax: mealR.totalTax,
+              totalCost: mealR.totalCost ?? m.totalCost,
+            }
+          : m
       );
       setWizardStep(3);
     }
@@ -964,6 +1068,177 @@ function CreateReservation() {
         )}
         {showWizard && wizardStep === 2 && wizardMeta && (
           <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
+              {t("Meal plan")}
+            </Typography>
+            {hotelMealPlans.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("No meal plans configured for this hotel. Configure them under Hotel → Edit.")}
+              </Typography>
+            ) : (
+              <>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: { xs: 1, sm: 2 },
+                    mb: 2,
+                  }}
+                >
+                  {hotelMealPlans.map((plan) => {
+                    const selected = selectedMealPlanId === plan.mealPlanId;
+                    return (
+                      <FormControlLabel
+                        key={plan.mealPlanId}
+                        sx={{
+                          m: 0,
+                          px: 1.5,
+                          py: 0.75,
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: selected ? "primary.main" : "divider",
+                          bgcolor: selected ? "action.selected" : "transparent",
+                        }}
+                        control={
+                          <Checkbox
+                            checked={selected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedMealPlanId(plan.mealPlanId);
+                              }
+                            }}
+                            size="small"
+                          />
+                        }
+                        label={
+                          <Typography variant="body2" component="span">
+                            {mealPlanSelectLabel(plan, t)}
+                          </Typography>
+                        }
+                      />
+                    );
+                  })}
+                </Box>
+
+                {mealPlanPreview && mealPlanPreview.preTax > 0 && (
+                  <Box
+                    sx={{
+                      mb: 2,
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      bgcolor: "grey.50",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setMealBreakdownOpen((o) => !o)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setMealBreakdownOpen((o) => !o);
+                        }
+                      }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 1,
+                        p: 1.5,
+                        cursor: "pointer",
+                        "&:hover": { bgcolor: "action.hover" },
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}>
+                        <ExpandMoreIcon
+                          sx={{
+                            fontSize: 22,
+                            transform: mealBreakdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s",
+                            color: "text.secondary",
+                          }}
+                        />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          {t("Meal charges for this stay")}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
+                        {formatInr(mealPlanPreview.preTax + mealPlanPreview.tax)}
+                      </Typography>
+                    </Box>
+                    <Collapse in={mealBreakdownOpen}>
+                      <Box sx={{ px: 2, pb: 2, pt: 0 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 0.75,
+                            fontSize: 14,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {t("Rate")}
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatInr(mealPlanPreview.price)} {t("per guest, per night")}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 0.75,
+                            fontSize: 14,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {t("Guests & nights")}
+                          </Typography>
+                          <Typography variant="body2">
+                            {mealGuests} {mealGuests === 1 ? t("guest") : t("guests")} ·{" "}
+                            {mealNights} {mealNights === 1 ? t("night") : t("nights")}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 0.75,
+                            fontSize: 14,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {t("Meals (before tax)")}
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatInr(mealPlanPreview.preTax)}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 0,
+                            fontSize: 14,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {t("Meal GST")} ({mealPlanPreview.gstRate}%)
+                          </Typography>
+                          <Typography variant="body2">{formatInr(mealPlanPreview.tax)}</Typography>
+                        </Box>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                )}
+              </>
+            )}
+
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, mt: 2 }}>
+              {t("Other charges (optional)")}
+            </Typography>
             {addonRows.map((row, idx) => (
               <Box
                 key={idx}
@@ -1091,7 +1366,20 @@ function CreateReservation() {
             </Box>
 
             <Box sx={{ fontWeight: 600, fontSize: 14, mt: 2, mb: 0.5 }}>
-              {t("Add-ons")}
+              {t("Meal plan")}
+            </Box>
+            <Box sx={{ fontSize: 14, mb: 1 }}>
+              {mealPlanDisplayLabel(wizardMeta) || "—"}
+              {reservationMealPreTax(wizardMeta) > 0 && (
+                <Box component="span" sx={{ color: "text.secondary", ml: 1 }}>
+                  ({formatInr(reservationMealPreTax(wizardMeta))} + {t("GST")}{" "}
+                  {formatInr(reservationMealGst(wizardMeta))})
+                </Box>
+              )}
+            </Box>
+
+            <Box sx={{ fontWeight: 600, fontSize: 14, mt: 1, mb: 0.5 }}>
+              {t("Other add-ons")}
             </Box>
             {addonRows.filter((row) => (row.label || "").trim()).length === 0 ? (
               <Box sx={{ fontSize: 14, color: "text.secondary" }}>—</Box>
@@ -1118,13 +1406,25 @@ function CreateReservation() {
                 </Box>
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                <Box sx={{ fontSize: 14 }}>{t("GST")}</Box>
+                <Box sx={{ fontSize: 14 }}>{t("Room GST")}</Box>
                 <Box sx={{ fontSize: 14, fontWeight: 600 }}>
-                  {formatInr(reservationGst(wizardMeta))}
+                  {formatInr(reservationRoomGst(wizardMeta))}
                 </Box>
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                <Box sx={{ fontSize: 14 }}>{t("Add-ons")}</Box>
+                <Box sx={{ fontSize: 14 }}>{t("Meal plan (excl. GST)")}</Box>
+                <Box sx={{ fontSize: 14, fontWeight: 600 }}>
+                  {formatInr(reservationMealPreTax(wizardMeta))}
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Box sx={{ fontSize: 14 }}>{t("Meal GST")}</Box>
+                <Box sx={{ fontSize: 14, fontWeight: 600 }}>
+                  {formatInr(reservationMealGst(wizardMeta))}
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Box sx={{ fontSize: 14 }}>{t("Other add-ons")}</Box>
                 <Box sx={{ fontSize: 14, fontWeight: 600 }}>
                   {formatInr(
                     wizardMeta.supplementTotal != null

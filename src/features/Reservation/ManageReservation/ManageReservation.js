@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import ManageReservationTable from './ManageReservationTable';
 import { FLOW_TYPE } from '../../../Utils/constants';
@@ -11,11 +11,16 @@ function ManageReservaton() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const prefillHotelId = useSelector(
+    (state) => state.manageReservationTableReducer.prefillHotelId
+  );
   const userPermission = localStorage.getItem('roles');
   const breadCrumButtonClickHandler = (e, item) => {
     if (item.url === "/create-reservation") {
-      navigate(item.url)
-      dispatch(updateTableState({ flow: FLOW_TYPE.NEW }));
+      navigate(item.url, {
+        state: prefillHotelId ? { prefillHotelId } : {},
+      });
+      dispatch(updateTableState({ flow: FLOW_TYPE.NEW, selectedReservationData: null }));
     }
   }
   return (

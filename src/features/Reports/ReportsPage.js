@@ -48,6 +48,9 @@ import './ReportsPage.scss';
 
 const MONEY_COLUMNS = new Set([
   'preTax',
+  'roomPreTax',
+  'mealPreTax',
+  'mealGst',
   'gst',
   'cgst',
   'sgst',
@@ -130,6 +133,8 @@ function FilterSection({ title, children }) {
 export default function ReportsPage() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const permissions = JSON.parse(localStorage.getItem('roles') || '[]');
+  const canViewReports = permissions.includes('REPORT:VIEW');
   const { control } = useForm();
   const [hotelOptions, setHotelOptions] = useState([{ label: t('All hotels'), value: 'all' }]);
   const [selectedHotel, setSelectedHotel] = useState('all');
@@ -251,6 +256,24 @@ export default function ReportsPage() {
   const rows = preview?.rows || [];
   const totals = preview?.totals;
   const reportTitle = selectedReportMeta ? t(selectedReportMeta.labelKey) : t('Reports');
+
+  if (!canViewReports) {
+    return (
+      <div className="reports-page page">
+        <Breadcrumb
+          className="breadcrumb-wrapper--trail-only"
+          rmMargin
+          breadcrumbList={[
+            { title: t('Home'), url: '/' },
+            { title: t('Reports'), url: '/reports' },
+          ]}
+        />
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          {t('You do not have permission to view reports.')}
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="reports-page page">

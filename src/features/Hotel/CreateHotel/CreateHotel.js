@@ -28,6 +28,7 @@ import {
   AWS_URL,
 } from "../../../Utils/constants";
 import "./CreateHotel.scss";
+import HotelMealPlansSection from "../HotelMealPlans/HotelMealPlansSection";
 
 import DropzoneUploader from "react-dropzone-uploader";
 import "react-dropzone-uploader/dist/styles.css";
@@ -803,6 +804,10 @@ function CreateHotel() {
             />
           </div>
         </div>
+
+        {flow === FLOW_TYPE.EDIT && selectedHotelData?.hotelId && (
+          <HotelMealPlansSection hotelId={selectedHotelData.hotelId} />
+        )}
 
         <div className="card-wrapper-default" style={{ marginTop: "20px" }}>
           <div className="title-header">{t("Hotel Images")}</div>

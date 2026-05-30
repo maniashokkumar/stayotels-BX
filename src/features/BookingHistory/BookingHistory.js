@@ -5,11 +5,8 @@ import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
-  Chip,
   Skeleton,
   TablePagination,
-  Card,
-  CardActionArea,
   Stack,
   TextField,
   FormControl,
@@ -26,20 +23,11 @@ import { CustomSelectField } from '../../components/ReactHookForm';
 import { listHotel } from '../CalendarView/CalendarViewApi';
 import { fetchBookingHistoryPage } from './BookingHistoryApi';
 import BookingDetailDrawer from './BookingDetailDrawer';
+import BookingHistoryCard from './BookingHistoryCard';
 import './BookingHistory.scss';
-import { guestName, formatMoney, statusLabel, channelLabel, cpSourceLabel } from '../Reservation/reservationDisplayUtils';
-
-function phoneDisplay(row) {
-  const p = row?.customer?.phoneNumber || row?.guestPhone || row?.phoneNumber;
-  return p && String(p).trim() ? String(p).trim() : '';
-}
+import { bookingRowKey } from './bookingHistoryUtils';
 
 const ROWS_OPTIONS = [10, 25, 50];
-
-function bookingRowKey(row) {
-  if (!row) return null;
-  return row.reservationId ?? row.orderId ?? null;
-}
 
 function BookingHistory() {
   const { t } = useTranslation();
@@ -241,7 +229,6 @@ function BookingHistory() {
           <>
             <Box className="booking-history-list booking-history-card-grid">
               {rows.map((row) => {
-                const statusText = statusLabel(row, t);
                 const oid = row.orderId || row.reservationId || '—';
                 const rowKey = bookingRowKey(row) ?? oid;
                 const selKey = bookingRowKey(selectedRow);
@@ -253,84 +240,12 @@ function BookingHistory() {
                   selKey === rowStableKey;
                 return (
                   <Box key={rowKey} sx={{ display: 'flex', minWidth: 0, width: '100%' }}>
-                    <Card
-                      elevation={0}
-                      className={`booking-history-card-item${isActive ? ' booking-history-card-item--active' : ''}`}
-                      sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}
-                    >
-                      <CardActionArea
-                        onClick={() => openDetail(row)}
-                        className="booking-history-card-item__action"
-                        aria-label={`${t('Booking')} ${oid}, ${guestName(row)}`}
-                        aria-current={isActive ? 'true' : undefined}
-                        sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
-                      >
-                        <Box className="booking-history-card-item__top">
-                          <Typography className="booking-history-card-item__id" variant="body2" fontWeight={700}>
-                            #{oid}
-                          </Typography>
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            label={statusText}
-                            className="booking-history-card-item__chip"
-                            sx={{
-                              color: '#fff',
-                              borderColor: 'rgba(255,255,255,0.65)',
-                              '& .MuiChip-label': { color: '#fff', fontWeight: 600, fontSize: '0.7rem' },
-                            }}
-                          />
-                        </Box>
-                        <Box className="booking-history-card-item__name-row">
-                          <Typography
-                            className="booking-history-card-item__name"
-                            variant="subtitle1"
-                            fontWeight={600}
-                            noWrap
-                            title={guestName(row)}
-                          >
-                            {guestName(row)}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            className="booking-history-card-item__phone"
-                            noWrap
-                            title={phoneDisplay(row) || undefined}
-                          >
-                            {phoneDisplay(row) || '—'}
-                          </Typography>
-                        </Box>
-                        {(channelLabel(row, t) || cpSourceLabel(row, t)) ? (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ px: 2, pt: 0.5 }} noWrap>
-                            {[channelLabel(row, t), cpSourceLabel(row, t)].filter(Boolean).join(' · ')}
-                          </Typography>
-                        ) : null}
-                        <Box className="booking-history-card-item__dates">
-                          <Box className="booking-history-card-item__date-block">
-                            <Typography variant="caption" color="text.secondary" component="span" display="block">
-                              {t('Check-in')}
-                            </Typography>
-                            <Typography variant="caption" className="booking-history-card-item__date-value">
-                              {row.checkIn || '—'}
-                            </Typography>
-                          </Box>
-                          <Box className="booking-history-card-item__date-block booking-history-card-item__date-block--end">
-                            <Typography variant="caption" color="text.secondary" component="span" display="block">
-                              {t('Checkout')}
-                            </Typography>
-                            <Typography variant="caption" className="booking-history-card-item__date-value">
-                              {row.checkOut || '—'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <Box className="booking-history-card-item__bottom">
-                          <Typography variant="body2" fontWeight={600} className="booking-history-card-item__amount">
-                            {formatMoney(row.totalCost)}
-                          </Typography>
-                        </Box>
-                      </CardActionArea>
-                    </Card>
+                    <BookingHistoryCard
+                      row={row}
+                      isActive={isActive}
+                      onOpen={openDetail}
+                      t={t}
+                    />
                   </Box>
                 );
               })}

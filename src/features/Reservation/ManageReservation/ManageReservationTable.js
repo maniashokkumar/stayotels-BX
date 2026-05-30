@@ -35,7 +35,15 @@ import { store } from '../../../redux/store';
 import { fetchReservationList, updateTableState, fetchReservationListTableColumnConfig } from './manageReservationTableSlice';
 import { fetchLookupOptionsSearch, deleteReservation, cancelReservationFromControlPanel } from './ManageReservationApi';
 import ReservationDetailDrawer from './ReservationDetailDrawer';
-import { guestName, guestPhone, formatMoney, statusLabel, cpSourceLabel, reservationGrandTotal } from '../reservationDisplayUtils';
+import {
+  guestName,
+  guestPhone,
+  formatMoney,
+  statusLabel,
+  cpSourceLabel,
+  reservationGrandTotal,
+  mealPlanDisplayLabel,
+} from '../reservationDisplayUtils';
 
 function dateShort(ymd) {
   if (!ymd) return '—';
@@ -93,7 +101,9 @@ function ManageReservationTable() {
       setOptionsHotel(opts);
       if (!hotelsLoaded.current && opts.length > 0) {
         hotelsLoaded.current = true;
-        setSelectedHotel((prev) => prev || opts[0].value);
+        const initial = opts[0].value;
+        setSelectedHotel((prev) => prev || initial);
+        dispatch(updateTableState({ prefillHotelId: initial }));
       }
     })();
     return () => {
@@ -432,8 +442,9 @@ function ManageReservationTable() {
   };
 
   const handleHotelChange = (e) => {
-    setSelectedHotel(e.target.value);
-    dispatch(updateTableState({ page: 0 }));
+    const hotelId = e.target.value;
+    setSelectedHotel(hotelId);
+    dispatch(updateTableState({ page: 0, prefillHotelId: hotelId }));
     closeDetails();
   };
 
@@ -603,6 +614,11 @@ function ManageReservationTable() {
                           {cpSourceLabel(row, t) ? (
                             <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ mt: 0.25 }}>
                               {cpSourceLabel(row, t)}
+                            </Typography>
+                          ) : null}
+                          {mealPlanDisplayLabel(row, t) ? (
+                            <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ mt: 0.25 }}>
+                              {t('Meal plan')}: {mealPlanDisplayLabel(row, t)}
                             </Typography>
                           ) : null}
                         </Box>

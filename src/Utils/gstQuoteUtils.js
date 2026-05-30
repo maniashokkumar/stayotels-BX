@@ -1,3 +1,5 @@
+import { normalizeMealsBlock } from '../features/Reservation/mealsBlockUtils';
+
 export const roundToTwo = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
 export const buildBookingQuotePayload = ({
@@ -15,8 +17,10 @@ export const buildBookingQuotePayload = ({
   selectedRooms: (selectedRooms || []).map((room) => ({
     id: room.id,
     quantity: Number(room.quantity) || 1,
+    mealPlanId: room.mealPlanId || null,
     instances: (room.instances || []).map((inst) => ({
       extraPersons: Number(inst?.extraPersons) || 0,
+      ...(inst?.guests != null ? { guests: Number(inst.guests) || 0 } : {}),
     })),
   })),
   couponCode: couponCode || null,
@@ -33,6 +37,11 @@ export const summarizeQuoteGst = (quote) => {
       sgst: 0,
       total: 0,
       couponDiscount: 0,
+      roomPreTax: 0,
+      mealPreTax: 0,
+      mealTax: 0,
+      roomTax: 0,
+      meals: normalizeMealsBlock(null),
       ratePercent: null,
       mixedRates: false,
     };
@@ -42,6 +51,10 @@ export const summarizeQuoteGst = (quote) => {
   const gst = roundToTwo(quote.taxAmountRupee);
   const total = roundToTwo(quote.orderAmountRupee);
   const couponDiscount = roundToTwo(quote.couponDiscountAmount || 0);
+  const roomPreTax = roundToTwo(quote.roomPreTaxAmountRupee ?? quote.preTaxAmountRupee);
+  const mealPreTax = roundToTwo(quote.mealPreTaxAmountRupee || 0);
+  const mealTax = roundToTwo(quote.mealTaxAmountRupee || 0);
+  const roomTax = roundToTwo(quote.roomTaxAmountRupee ?? Math.max(0, gst - mealTax));
   const rows = Array.isArray(quote.taxBreakdown) ? quote.taxBreakdown : [];
 
   let cgst = 0;
@@ -56,6 +69,16 @@ export const summarizeQuoteGst = (quote) => {
   cgst = roundToTwo(cgst);
   sgst = roundToTwo(sgst);
   const rateList = [...rates].sort((a, b) => a - b);
+  const mixedRates = rateList.length > 1;
+  const ratePercent = rateList.length === 1 ? rateList[0] : rateList.length === 0 ? 0 : null;
+
+  const meals = normalizeMealsBlock(quote);
+  if (meals.totalPreTax <= 0 && mealPreTax > 0) {
+    meals.totalPreTax = mealPreTax;
+  }
+  if (meals.totalTax <= 0 && mealTax > 0) {
+    meals.totalTax = mealTax;
+  }
 
   return {
     valid: true,
@@ -66,8 +89,13 @@ export const summarizeQuoteGst = (quote) => {
     sgst,
     total,
     couponDiscount,
-    ratePercent: rateList.length === 1 ? rateList[0] : rateList.length === 0 ? 0 : null,
-    mixedRates: rateList.length > 1,
+    roomPreTax,
+    mealPreTax: meals.totalPreTax,
+    mealTax: meals.totalTax,
+    roomTax,
+    meals,
+    ratePercent,
+    mixedRates,
     taxBreakdown: rows,
     totalCalculatedPrice: roundToTwo(quote.totalCalculatedPrice),
     couponApplied: quote.couponApplied === true,
@@ -92,6 +120,7 @@ export const buildCpQuoteRoomsFromForm = ({
   roomLineEdits,
   form,
   roomOptions,
+  defaultMealPlanId = null,
 }) => {
   const opts = roomOptions || [];
   const findOpt = (roomId) => opts.find((r) => r?.roomId === roomId);
@@ -113,33 +142,31 @@ export const buildCpQuoteRoomsFromForm = ({
     });
   };
 
+  const mapLine = (opt, qty, persons, mealPlanId) => {
+    const docId = roomDocumentId(opt);
+    if (!docId) return null;
+    return {
+      id: docId,
+      quantity: qty,
+      mealPlanId: mealPlanId || defaultMealPlanId || null,
+      instances: buildInstances(opt, qty, persons),
+    };
+  };
+
   if (isMultiRoom && roomLineEdits?.length > 1) {
     return roomLineEdits
       .map((line) => {
         const opt = findOpt(line.roomId);
-        const docId = roomDocumentId(opt);
-        if (!docId) return null;
         const qty = Math.max(1, Number(line.noOfRooms) || 1);
         const persons = Math.max(1, Number(line.noOfPersons) || 1);
-        return {
-          id: docId,
-          quantity: qty,
-          instances: buildInstances(opt, qty, persons),
-        };
+        return mapLine(opt, qty, persons, line.mealPlanId);
       })
       .filter(Boolean);
   }
 
   const opt = findOpt(form?.roomId);
-  const docId = roomDocumentId(opt);
-  if (!docId) return null;
   const qty = Math.max(1, Number(form?.noofRooms) || 1);
   const persons = Math.max(1, Number(form?.cdnintnoOfPersons) || 1);
-  return [
-    {
-      id: docId,
-      quantity: qty,
-      instances: buildInstances(opt, qty, persons),
-    },
-  ];
+  const single = mapLine(opt, qty, persons, defaultMealPlanId);
+  return single ? [single] : null;
 };

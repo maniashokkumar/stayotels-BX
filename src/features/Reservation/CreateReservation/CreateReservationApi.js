@@ -33,6 +33,54 @@ export const completeGuestBilling = async ({ body, dispatch }) => {
   }
 };
 
+export const fetchHotelMealPlansActive = async ({ hotelId, dispatch }) => {
+  try {
+    const res = await axiosPrService.get(`/hotel/${hotelId}/meal-plans/active`);
+    if (res.status === 200) return res.data;
+    dispatch(showSnackbar({ type: 'error', message: 'Unable to load meal plans' }));
+    return [];
+  } catch (e) {
+    dispatch(showSnackbar({ type: 'error', message: e.message || 'Server error' }));
+    return [];
+  }
+};
+
+export const completeMealPlan = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/completion/meal-plan', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg = typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to save meal plan';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    const msg =
+      (e.response && typeof e.response.data === 'string' && e.response.data) ||
+      e.response?.data?.message ||
+      e.message ||
+      'Server error';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  }
+};
+
+export const updateReservationMealPlan = async ({ body, dispatch }) => {
+  try {
+    const res = await axiosPrService.post('/reservation/update-meal-plan', body);
+    if (res.status === 200 && res.data?.success) return res.data;
+    const msg = typeof res.data === 'string' ? res.data : res.data?.message || 'Unable to update meal plan';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  } catch (e) {
+    const msg =
+      (e.response && typeof e.response.data === 'string' && e.response.data) ||
+      e.response?.data?.message ||
+      e.message ||
+      'Server error';
+    dispatch(showSnackbar({ type: 'error', message: msg }));
+    return null;
+  }
+};
+
 export const completeAddOns = async ({ body, dispatch }) => {
   try {
     const res = await axiosPrService.post('/reservation/completion/add-ons', body);

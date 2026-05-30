@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { normalizeMealsBlock } from './mealsBlockUtils';
 
 /**
  * Shared display helpers for reservation / booking cards and detail drawers.
@@ -36,7 +37,6 @@ export function formatMoney(amount, currency = 'INR') {
 
 export function statusLabel(booking, t) {
   const s = (booking?.status || '').toUpperCase();
-  /** Business status first: DB can have `isDeleted: true` on active rows (bad backfill / save bug). */
   if (s === 'CANCELLED') return t('Cancelled');
   if (s === 'COMPLETED') return t('Completed');
   if (s === 'HOTEL_BLOCKED') return t('Blocked');
@@ -48,56 +48,32 @@ export function statusLabel(booking, t) {
 
 export function channelLabel(booking, t) {
   const ch = (booking?.salesChannel || '').toUpperCase();
-  if (ch === 'CONTROL_PANEL') return t('Control panel');
   if (ch === 'WEBSITE') return t('Website');
-  if (!ch) return null;
-  return booking.salesChannel;
+  if (ch === 'CONTROL_PANEL' || ch === 'CP') return t('Control panel');
+  if (ch === 'WALK_IN') return t('Walk-in');
+  if (ch === 'PHONE') return t('Phone');
+  return booking?.salesChannel || '—';
 }
 
 export function cpSourceLabel(booking, t) {
-  const map = {
-    WALK_IN: t('Walk-in'),
-    DIRECT_ENQUIRY: t('Direct enquiry'),
-    PHONE: t('Phone'),
-    EMAIL: t('Email'),
-    OTHER: t('Other'),
-  };
-  const k = (booking?.cpSourceType || '').toUpperCase();
-  if (!k) return null;
-  return map[k] || booking.cpSourceType;
+  const src = booking?.sourceReference || booking?.cpSource;
+  if (!src) return null;
+  return src;
 }
 
-/** Backend often leaves noOfAdults at 0 and only sets noOfPersons; `noOfAdults ?? noOfPersons` wrongly shows 0. */
 export function displayAdultGuestCount(booking) {
   const adults = Number(booking?.noOfAdults);
-  const children = Number(booking?.noOfChildren);
-  const persons = Number(booking?.noOfPersons);
-
-  if (Number.isFinite(adults) && adults > 0) return adults;
-  if (Number.isFinite(children) && children > 0 && Number.isFinite(persons)) {
-    const derived = persons - children;
-    return derived > 0 ? derived : 0;
-  }
-  if (Number.isFinite(persons)) return persons;
-  return 0;
+  if (adults > 0) return adults;
+  return Number(booking?.noOfPersons) || 0;
 }
 
 export function paymentStatusLine(booking, t) {
-  const cp = (booking?.cpPaymentStatus || '').toUpperCase();
-  if (cp === 'NOT_PAID') return t('Not paid');
-  if (cp === 'PARTIALLY_PAID') return t('Partially paid');
-  if (cp === 'FULLY_PAID') return t('Fully paid');
-  const s = (booking?.status || '').toUpperCase();
-  if (s === 'HOTEL_BLOCKED') {
-    return t('No online payment');
-  }
-  if (booking?.isPaid === true) {
-    return t('Paid');
-  }
-  if (booking?.isPaid === false) {
-    return t('Not paid');
-  }
-  return '—';
+  if (booking?.isPaid) return t('Paid');
+  const st = (booking?.cpPaymentStatus || '').toUpperCase();
+  if (st === 'FULLY_PAID') return t('Fully paid');
+  if (st === 'PARTIALLY_PAID') return t('Partially paid');
+  if (st === 'NOT_PAID') return t('Not paid');
+  return t('Pending');
 }
 
 export function nightsBetween(checkIn, checkOut) {
@@ -117,9 +93,110 @@ export function reservationGst(booking) {
   return tax != null && Number.isFinite(Number(tax)) ? Number(tax) : 0;
 }
 
-export function reservationGrandTotal(booking) {
-  const preTax = reservationPreTax(booking);
-  const gst = reservationGst(booking);
+/** Normalized `meals` block — single source of truth. */
+export function reservationMeals(booking) {
+  return normalizeMealsBlock(booking);
+}
+
+export function reservationMealPreTax(booking) {
+  return reservationMeals(booking).totalPreTax;
+}
+
+export function reservationMealGst(booking) {
+  return reservationMeals(booking).totalTax;
+}
+
+export function reservationRoomGst(booking) {
+  const total = reservationGst(booking);
+  const mealTax = reservationMealGst(booking);
+  return Math.round(Math.max(0, total - mealTax) * 100) / 100;
+}
+
+export function reservationRoomPreTax(booking) {
+  const total = Number(booking?.totalCost) || 0;
+  const meal = reservationMealPreTax(booking);
   const sup = Number(booking?.supplementTotal) || 0;
-  return Math.round((preTax + gst + sup) * 100) / 100;
+  return Math.round(Math.max(0, total - meal - sup) * 100) / 100;
+}
+
+export function mealPlanDisplayLabel(booking, _t) {
+  if (!booking) return null;
+  const meals = reservationMeals(booking);
+  return meals.displayName || null;
+}
+
+/** Compact meal tags for booking list cards (deduped from meals.lines). */
+export function bookingCardMealTags(booking) {
+  if (!booking) return [];
+  const meals = reservationMeals(booking);
+  const tags = [];
+  const seen = new Set();
+
+  for (const line of meals.lines) {
+    const label = line.planName ?? line.planCode ?? null;
+    if (!label) continue;
+    const key = line.planId ?? label;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tags.push({
+      key,
+      label,
+      code: line.planCode ?? null,
+      paid: (Number(line.totalPreTax) || 0) > 0.01,
+    });
+  }
+
+  if (tags.length > 0) return tags;
+
+  const fallback = meals.displayName;
+  if (!fallback) return [];
+  return [
+    {
+      key: meals.planId ?? fallback,
+      label: fallback,
+      code: meals.planCode ?? null,
+      paid: meals.totalPreTax > 0.01,
+    },
+  ];
+}
+
+export function bookingStatusTone(booking) {
+  const s = (booking?.status || '').toUpperCase();
+  if (s === 'CANCELLED' || booking?.isDeleted === true) return 'cancelled';
+  if (s === 'COMPLETED') return 'completed';
+  if (s === 'HOTEL_BLOCKED') return 'blocked';
+  if (s === 'CONFIRMED' || booking?.isPaid) return 'confirmed';
+  return 'pending';
+}
+
+export function hasMealReservation(booking) {
+  if (!booking) return false;
+  const meals = reservationMeals(booking);
+  if (meals.lines.length > 0 || meals.displayName) return true;
+  if (meals.totalPreTax > 0.01 || meals.totalTax > 0.01) return true;
+  const lines = booking.roomLines;
+  if (Array.isArray(lines) && lines.some((l) => l?.mealPlanId || l?.mealPlanName)) return true;
+  return false;
+}
+
+export function reservationMealPlanLines(booking) {
+  return reservationMeals(booking).lines;
+}
+
+export function reservationMixedMealPlans(booking) {
+  const meals = reservationMeals(booking);
+  if (meals.mixedPlans) return true;
+  const names = new Set(meals.lines.map((l) => l?.planName).filter(Boolean));
+  return names.size > 1;
+}
+
+export function roomLineMealLabel(line) {
+  if (!line) return null;
+  return line.planName ?? line.mealPlanName ?? line.planCode ?? line.mealPlanCode ?? null;
+}
+
+export function reservationGrandTotal(booking) {
+  const gst = reservationGst(booking);
+  const preTax = reservationPreTax(booking);
+  return Math.round((preTax + gst) * 100) / 100;
 }

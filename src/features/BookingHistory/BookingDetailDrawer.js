@@ -33,7 +33,7 @@ export default function BookingDetailDrawer({ open, onClose, booking }) {
       onClose={onClose}
       PaperProps={{
         sx: {
-          width: isXs ? '100%' : { sm: 440, md: 480 },
+          width: isXs ? '100%' : { sm: 420, md: 520 },
           maxWidth: '100vw',
           display: 'flex',
           flexDirection: 'column',

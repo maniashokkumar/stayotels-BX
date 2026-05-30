@@ -145,7 +145,7 @@ export default function SideDrawer(props) {
     if (menuItem.id === 'user' && !permissions.includes("USER:VIEW")) {
       return false;
     }
-    if (menuItem.id === 'reports' && !permissions.includes("REPORT:VIEW") && !permissions.includes("RESERVATION:VIEW")) {
+    if (menuItem.id === 'reports' && !permissions.includes("REPORT:VIEW")) {
       return false;
     }
     return true;
