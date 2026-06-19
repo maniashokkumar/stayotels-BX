@@ -42,13 +42,19 @@ import {
   statusLabel,
   cpSourceLabel,
   reservationGrandTotal,
-  mealPlanDisplayLabel,
+  isPartiallyPaidBooking,
+  paymentStatusLine,
+  bookingStatusTone,
+  reservationDateShort,
+  mealPlanCardLabel,
+  nightsBetween,
 } from '../reservationDisplayUtils';
+import ReservationCardFooter, {
+  partialPaymentStatusChipLabel,
+} from '../PartialPaymentCardFooter';
 
 function dateShort(ymd) {
-  if (!ymd) return '—';
-  const d = dayjs(ymd);
-  return d.isValid() ? d.format('D MMM YYYY') : ymd;
+  return reservationDateShort(ymd);
 }
 
 function checkInDayEndExclusive(ymd) {
@@ -564,99 +570,114 @@ function ManageReservationTable() {
                 (userPermission.includes('RESERVATION:EDIT') || userPermission.includes('RESERVATION:DELETE'));
               const canCancelFromPanel =
                 mayEditOrDelete && st !== 'CANCELLED' && (st === 'HOTEL_BLOCKED' || st === 'CONFIRMED');
+              const partialPay = isPartiallyPaidBooking(row);
+              const statusText = statusLabel(row, t);
+              const chipLabel = partialPay ? partialPaymentStatusChipLabel(row, t, statusText) : statusText;
+              const tone = bookingStatusTone(row);
+              const statusClass = partialPay ? 'partial' : tone;
+              const planLabel = mealPlanCardLabel(row, t);
+              const roomLabel = row?.rooms || null;
+              const nights = nightsBetween(row.checkIn, row.checkOut);
+              const nightsLabel = nights === '—' ? null : `${nights} ${t('N')}`;
 
               return (
                 <Box key={row.reservationId || row.orderId} sx={{ display: 'flex', minWidth: 0, width: '100%' }}>
-                  <Card elevation={0} className="manage-reservation-card-item" sx={{ width: '100%' }}>
+                  <Card
+                    elevation={0}
+                    className={`cp-res-card cp-res-card--${tone} manage-reservation-card-item`}
+                    sx={{ width: '100%' }}
+                  >
                     <CardActionArea
                       onClick={() => openDetails(row)}
                       aria-label={`${t('Reservation')} ${oid}, ${guestName(row)}`}
                       sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
-                      className="manage-reservation-card-item__action"
+                      className="cp-res-card__action"
                     >
-                      <Box className="manage-reservation-card-item__top">
-                        <Typography className="manage-reservation-card-item__id" variant="body2" fontWeight={700}>
+                      <Box className="cp-res-card__header">
+                        <Typography className="cp-res-card__id" variant="body2" fontWeight={700}>
                           #{oid}
                         </Typography>
                         <Chip
                           size="small"
                           variant="outlined"
-                          label={statusLabel(row, t)}
-                          className="manage-reservation-card-item__chip"
+                          label={chipLabel}
+                          className={`cp-res-card__status cp-res-card__status--${statusClass}`}
                           sx={{
                             color: '#fff',
-                            borderColor: 'rgba(255,255,255,0.65)',
-                            '& .MuiChip-label': { color: '#fff', fontWeight: 600, fontSize: '0.7rem' },
+                            borderColor: 'rgba(255, 255, 255, 0.65)',
+                            '& .MuiChip-label': { color: '#fff', fontWeight: 600, fontSize: '0.65rem' },
                           }}
                         />
                       </Box>
 
-                      <Box className="manage-reservation-card-item__name-row">
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography
-                            className="manage-reservation-card-item__name"
-                            variant="subtitle1"
-                            fontWeight={600}
-                            noWrap
-                            title={guestName(row)}
-                          >
+                      <Box className="cp-res-card__body">
+                        <Box className="cp-res-card__guest-row">
+                          <Typography className="cp-res-card__name" variant="body2" fontWeight={600} title={guestName(row)}>
                             {guestName(row)}
                           </Typography>
-                          <Typography
-                            className="manage-reservation-card-item__hotel-room"
-                            variant="body2"
-                            color="text.secondary"
-                            noWrap
-                            title={`${row?.hotels || ''} ${row?.rooms || ''}`.trim()}
-                          >
-                            {(row?.hotels && row?.rooms) ? `${row.hotels} · ${row.rooms}` : (row?.hotels || row?.rooms || '—')}
+                          <Typography className="cp-res-card__phone" variant="caption" title={guestPhone(row)}>
+                            {guestPhone(row)}
                           </Typography>
-                          {cpSourceLabel(row, t) ? (
-                            <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ mt: 0.25 }}>
-                              {cpSourceLabel(row, t)}
-                            </Typography>
-                          ) : null}
-                          {mealPlanDisplayLabel(row, t) ? (
-                            <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ mt: 0.25 }}>
-                              {t('Meal plan')}: {mealPlanDisplayLabel(row, t)}
-                            </Typography>
-                          ) : null}
                         </Box>
-                        <Typography
-                          className="manage-reservation-card-item__phone"
-                          variant="body2"
-                          color="text.secondary"
-                          noWrap
-                          title={guestPhone(row)}
-                        >
-                          {guestPhone(row)}
-                        </Typography>
+
+                        {row?.hotels ? (
+                          <Typography variant="caption" className="cp-res-card__meta" title={row.hotels}>
+                            {row.hotels}
+                            {cpSourceLabel(row, t) ? ` · ${cpSourceLabel(row, t)}` : ''}
+                          </Typography>
+                        ) : cpSourceLabel(row, t) ? (
+                          <Typography variant="caption" className="cp-res-card__meta">
+                            {cpSourceLabel(row, t)}
+                          </Typography>
+                        ) : null}
+
+                        <Box className="cp-res-card__stay">
+                          <Box className="cp-res-card__stay-col">
+                            <span className="cp-res-card__lbl">{t('Check-in')}</span>
+                            <span className="cp-res-card__val">{dateShort(row.checkIn)}</span>
+                          </Box>
+                          {nightsLabel ? (
+                            <span className="cp-res-card__nights" aria-label={`${nights} ${t('Nights')}`}>
+                              {nightsLabel}
+                            </span>
+                          ) : (
+                            <span className="cp-res-card__nights" aria-hidden="true">
+                              ·
+                            </span>
+                          )}
+                          <Box className="cp-res-card__stay-col cp-res-card__stay-col--end">
+                            <span className="cp-res-card__lbl">{t('Check-out')}</span>
+                            <span className="cp-res-card__val">{dateShort(row.checkOut)}</span>
+                          </Box>
+                        </Box>
+
+                        {roomLabel || planLabel ? (
+                          <Box className="cp-res-card__details">
+                            {roomLabel ? (
+                              <span className="cp-res-card__detail">
+                                <span className="cp-res-card__lbl">{t('Room')}</span>
+                                <span className="cp-res-card__val" title={roomLabel}>
+                                  {roomLabel}
+                                </span>
+                              </span>
+                            ) : null}
+                            {planLabel ? (
+                              <span className="cp-res-card__detail">
+                                <span className="cp-res-card__lbl">{t('Plan')}</span>
+                                <span className="cp-res-card__val" title={planLabel}>
+                                  {planLabel}
+                                </span>
+                              </span>
+                            ) : null}
+                          </Box>
+                        ) : null}
                       </Box>
 
-                      <Box className="manage-reservation-card-item__dates">
-                        <Box className="manage-reservation-card-item__date-block">
-                          <Typography variant="caption" color="text.secondary" component="span" display="block">
-                            {t('Check-in')}
-                          </Typography>
-                          <Typography variant="caption" className="manage-reservation-card-item__date-value">
-                            {dateShort(row.checkIn)}
-                          </Typography>
-                        </Box>
-                        <Box className="manage-reservation-card-item__date-block manage-reservation-card-item__date-block--end">
-                          <Typography variant="caption" color="text.secondary" component="span" display="block">
-                            {t('Checkout')}
-                          </Typography>
-                          <Typography variant="caption" className="manage-reservation-card-item__date-value">
-                            {dateShort(row.checkOut)}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Box className="manage-reservation-card-item__bottom">
-                        <Typography variant="body2" fontWeight={600} className="manage-reservation-card-item__amount">
-                          {formatMoney(reservationGrandTotal(row))}
-                        </Typography>
-                      </Box>
+                      <ReservationCardFooter
+                        booking={row}
+                        t={t}
+                        leftHint={!partialPay ? paymentStatusLine(row, t) : undefined}
+                      />
                     </CardActionArea>
 
                     {(blocked && canComplete) || canCancelFromPanel ? (

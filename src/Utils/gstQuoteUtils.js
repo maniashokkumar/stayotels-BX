@@ -14,17 +14,43 @@ export const buildBookingQuotePayload = ({
   checkInDate,
   checkOutDate,
   cdnintnoOfPersons: Number(cdnintnoOfPersons) || 0,
-  selectedRooms: (selectedRooms || []).map((room) => ({
-    id: room.id,
-    quantity: Number(room.quantity) || 1,
-    mealPlanId: room.mealPlanId || null,
-    instances: (room.instances || []).map((inst) => ({
-      extraPersons: Number(inst?.extraPersons) || 0,
-      ...(inst?.guests != null ? { guests: Number(inst.guests) || 0 } : {}),
-    })),
-  })),
+  selectedRooms: (selectedRooms || []).map((room) => {
+    const instances = (room.instances || []).map((inst) => {
+      const mapped = { extraPersons: Number(inst?.extraPersons) || 0 };
+      if (inst?.guests != null) {
+        mapped.guests = Number(inst.guests) || 0;
+      }
+      return mapped;
+    });
+    return {
+      id: room.id,
+      quantity: Number(room.quantity) || 1,
+      mealPlanId: room.mealPlanId || null,
+      instances,
+    };
+  }),
   couponCode: couponCode || null,
 });
+
+/** Website-style cart lines for control-panel create / quote. */
+export const buildCpSelectedRoomsFromCart = (cartLines) =>
+  (cartLines || [])
+    .filter((line) => (Number(line.quantity) || 0) > 0)
+    .map((line) => {
+      const instances = (line.instances || []).map((inst) => {
+        const mapped = { extraPersons: Number(inst?.extraPersons) || 0 };
+        if (inst?.guests != null) {
+          mapped.guests = Number(inst.guests) || 0;
+        }
+        return mapped;
+      });
+      return {
+        id: line.id,
+        quantity: Number(line.quantity) || 1,
+        mealPlanId: line.mealPlanId || null,
+        instances,
+      };
+    });
 
 export const summarizeQuoteGst = (quote) => {
   if (!quote || quote.valid !== true) {

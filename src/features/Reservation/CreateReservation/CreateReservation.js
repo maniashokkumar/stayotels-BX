@@ -43,8 +43,18 @@ import {
   hotelList,
   availableRoomsByHotel,
   fetchHotelMealPlansActive,
+  fetchBookingQuote,
 } from "./CreateReservationApi";
 import dayjs from "dayjs";
+import CpRoomCartPanel from "./CpRoomCartPanel";
+import CpQuoteSummary from "./CpQuoteSummary";
+import {
+  buildBookingQuotePayload,
+  buildCpSelectedRoomsFromCart,
+  isQuoteReady,
+  summarizeQuoteGst,
+} from "../../../Utils/gstQuoteUtils";
+import { mealPlanRateTitle, totalCartGuests, totalCartRooms } from "../../../Utils/cpMealPlanUtils";
 import { FLOW_TYPE } from "../../../Utils/constants";
 import {
   reservationGst,
@@ -153,6 +163,12 @@ function CreateReservation() {
   const [roomLineRows, setRoomLineRows] = useState([
     { roomId: "", qty: "1", persons: "1" },
   ]);
+  const [cartLines, setCartLines] = useState([]);
+  const [blockMealPlans, setBlockMealPlans] = useState([]);
+  const [quoteSummary, setQuoteSummary] = useState(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState(null);
+  const [mealsLockedAtBlock, setMealsLockedAtBlock] = useState(false);
   const roomLineHotelDateKeyRef = useRef("");
 
   const watchCheckInDate = watch("checkInDate");
@@ -464,66 +480,54 @@ function CreateReservation() {
       return maxGuestsPerRoom * Math.max(0, unitCount);
     };
 
-    const linesRaw = roomLineRows
-      .map((r) => ({
-        roomId: (r.roomId || "").trim(),
-        noofRooms: parseInt(r.qty, 10) || 0,
-        noOfPersons: parseInt(r.persons, 10) || 0,
-      }))
-      .filter((r) => r.roomId && r.noofRooms > 0);
-
-    if (linesRaw.length === 0) {
+    const selectedRooms = buildCpSelectedRoomsFromCart(cartLines);
+    if (selectedRooms.length === 0) {
       dispatch(
         showSnackbar({
           type: "error",
-          message: t("Add at least one room type with a quantity."),
+          message: t("Select at least one room and meal rate."),
         })
       );
       return;
     }
 
-    for (const r of linesRaw) {
-      const row = (availableRoomsRaw || []).find((x) => x?.roomId === r.roomId);
-      if (!row) {
-        dispatch(showSnackbar({ type: "error", message: t("Please select valid room types.") }));
-        return;
-      }
-      if (r.noOfPersons < 1) {
-        dispatch(
-          showSnackbar({
-            type: "error",
-            message: t("Each room line needs at least one guest."),
-          })
-        );
-        return;
-      }
-      if (r.noOfPersons > 25) {
-        dispatch(
-          showSnackbar({
-            type: "error",
-            message: t("Guests per line cannot exceed 25."),
-          })
-        );
-        return;
-      }
-      const cap = lineCapacityMax(r.roomId, r.noofRooms);
-      if (cap > 0 && r.noOfPersons > cap) {
-        dispatch(
-          showSnackbar({
-            type: "error",
-            message: t("Too many guests for one of the room lines. Check capacity for that room type."),
-          })
-        );
-        return;
-      }
+    if (!isQuoteReady(quoteSummary, quoteLoading, quoteError)) {
+      dispatch(
+        showSnackbar({
+          type: "error",
+          message: quoteError || t("Unable to calculate price. Check room selection."),
+        })
+      );
+      return;
     }
 
+    const guestCount =
+      Number(formData.cdnintnoOfPersons) ||
+      Number(getValues("cdnintnoOfPersons")) ||
+      totalCartGuests(cartLines) ||
+      1;
+
     const mergedLines = new Map();
-    linesRaw.forEach((r) => {
-      const ex = mergedLines.get(r.roomId) || { noofRooms: 0, noOfPersons: 0 };
-      mergedLines.set(r.roomId, {
-        noofRooms: ex.noofRooms + r.noofRooms,
-        noOfPersons: ex.noOfPersons + r.noOfPersons,
+    selectedRooms.forEach((line) => {
+      const roomDoc = (availableRoomsRaw || []).find(
+        (r) => String(r.id || r._id || "").toLowerCase() === String(line.id || "").toLowerCase()
+      );
+      const roomId = roomDoc?.roomId;
+      if (!roomId) return;
+      const qty = Number(line.quantity) || 0;
+      const lineGuests = (line.instances || []).reduce((sum, inst) => {
+        const base = Math.max(1, Number(roomDoc?.noOfPersons) || 1);
+        const extra = Number(inst?.extraPersons) || 0;
+        if (inst?.guests != null) {
+          const guests = Math.max(0, Number(inst.guests) || 0);
+          return sum + (guests >= base + extra ? guests : guests + extra);
+        }
+        return sum + base + extra;
+      }, 0);
+      const ex = mergedLines.get(roomId) || { noofRooms: 0, noOfPersons: 0 };
+      mergedLines.set(roomId, {
+        noofRooms: ex.noofRooms + qty,
+        noOfPersons: ex.noOfPersons + lineGuests,
       });
     });
     const roomLines = Array.from(mergedLines.entries()).map(([roomId, v]) => ({
@@ -606,7 +610,8 @@ function CreateReservation() {
       isHotelBlocked: true,
       roomId: roomLines[0].roomId,
       noofRooms: requestedRooms,
-      cdnintnoOfPersons: enteredPersons,
+      cdnintnoOfPersons: guestCount,
+      selectedRooms,
       cpSourceType: formData.cpSourceType || "WALK_IN",
       sourceReference: formData.sourceReference || "",
     };
@@ -618,11 +623,12 @@ function CreateReservation() {
       }));
     }
 
-    const roomLabelForWizard = roomLines
+    const roomLabelForWizard = cartLines
+      .filter((l) => (Number(l.quantity) || 0) > 0)
       .map((l) => {
-        const raw = (availableRoomsRaw || []).find((r) => r?.roomId === l.roomId);
-        const name = raw?.roomName || l.roomId;
-        return `${name} ×${l.noofRooms} (${l.noOfPersons} ${t("guests")})`;
+        const title = l.roomName || l.roomId;
+        const plan = l.mealPlan ? ` · ${mealPlanRateTitle(l.mealPlan)}` : "";
+        return `${title}${plan} ×${l.quantity}`;
       })
       .join(", ");
 
@@ -644,14 +650,19 @@ function CreateReservation() {
       if (showWizard && mode === "continue") {
         const hotelLabel =
           hotelListData.find((h) => h.value === formData.hotelId)?.label || "";
+        setMealsLockedAtBlock(Boolean(response?.meals?.lines?.length || response?.meals?.totalPreTax > 0));
         setWizardMeta({
           ...response,
           hotelLabel,
           roomLabel: roomLabelForWizard,
           noOfRooms: requestedRooms,
-          noOfPersons: enteredPersons,
+          noOfPersons: guestCount,
           checkIn: checkIn.toISOString(),
           checkOut: checkOut.toISOString(),
+          meals: response.meals,
+          totalTax: response.totalTax,
+          totalCost: response.totalCost,
+          taxBreakdown: response.taxBreakdown,
         });
         const lu = loginUser || {};
         const fullN = (lu.name || "").trim().split(/\s+/).filter(Boolean);
@@ -696,6 +707,9 @@ function CreateReservation() {
       setAvailableRoomsRaw([]);
       setRoomOptions([]);
       setIsPriceAvailable(false);
+      setCartLines([]);
+      setQuoteSummary(null);
+      setQuoteError(null);
       return;
     }
 
@@ -727,6 +741,7 @@ function CreateReservation() {
           setAvailableRoomsRaw([]);
           setRoomOptions([]);
           setIsPriceAvailable(false);
+          setCartLines([]);
         }
       } finally {
         setOnSumbitLoader(false);
@@ -744,8 +759,9 @@ function CreateReservation() {
 
     const formattedCheckInDate = checkIn.format("YYYY-MM-DD");
     const formattedCheckOutDate = checkOut.format("YYYY-MM-DD");
-    const noofRooms = totalRoomLineUnits;
-    const cdnintnoOfPersons = totalLinePersons;
+    const noofRooms = totalCartRooms(cartLines) || totalRoomLineUnits;
+    const guestField = Number(getValues("cdnintnoOfPersons")) || 0;
+    const cdnintnoOfPersons = guestField > 0 ? guestField : totalCartGuests(cartLines) || totalLinePersons;
 
     setFormData({
       hotelId: watchHotelId,
@@ -754,7 +770,86 @@ function CreateReservation() {
       noofRooms,
       cdnintnoOfPersons,
     });
-  }, [watchHotelId, watchCheckInDate, watchCheckOutDate, totalRoomLineUnits, totalLinePersons]);
+  }, [
+    watchHotelId,
+    watchCheckInDate,
+    watchCheckOutDate,
+    totalRoomLineUnits,
+    totalLinePersons,
+    cartLines,
+    getValues,
+  ]);
+
+  useEffect(() => {
+    if (!isPriceAvailable || !watchHotelId) {
+      setBlockMealPlans([]);
+      return;
+    }
+    fetchHotelMealPlansActive({ hotelId: watchHotelId, dispatch }).then((plans) => {
+      setBlockMealPlans(Array.isArray(plans) ? plans : []);
+    });
+  }, [isPriceAvailable, watchHotelId, dispatch]);
+
+  const blockQuotePayload = useMemo(() => {
+    if (!isPriceAvailable || !watchHotelId || !watchCheckInDate || !watchCheckOutDate) {
+      return null;
+    }
+    const selectedRooms = buildCpSelectedRoomsFromCart(cartLines);
+    if (!selectedRooms.length) return null;
+    const checkIn = dayjs(watchCheckInDate).format("YYYY-MM-DD");
+    const checkOut = dayjs(watchCheckOutDate).format("YYYY-MM-DD");
+    const guests =
+      Number(getValues("cdnintnoOfPersons")) || totalCartGuests(cartLines) || 1;
+    return buildBookingQuotePayload({
+      hotelId: watchHotelId,
+      checkInDate: checkIn,
+      checkOutDate: checkOut,
+      cdnintnoOfPersons: guests,
+      selectedRooms,
+      couponCode: null,
+    });
+  }, [
+    isPriceAvailable,
+    watchHotelId,
+    watchCheckInDate,
+    watchCheckOutDate,
+    cartLines,
+    getValues,
+  ]);
+
+  useEffect(() => {
+    if (!blockQuotePayload) {
+      setQuoteSummary(null);
+      setQuoteError(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    fetchBookingQuote({ data: blockQuotePayload, dispatch })
+      .then((quote) => {
+        if (cancelled) return;
+        const summary = summarizeQuoteGst(quote);
+        if (!summary.valid) {
+          setQuoteError(summary.error || "Unable to calculate tax");
+          setQuoteSummary(null);
+        } else {
+          setQuoteSummary(summary);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQuoteError("Unable to load tax quote");
+          setQuoteSummary(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [blockQuotePayload, dispatch]);
 
   useEffect(() => {
     const roomOpts = (availableRoomsRaw || []).map((item) => {
@@ -853,12 +948,12 @@ function CreateReservation() {
       dispatch,
     });
     setOnSumbitLoader(false);
-    if (r) setWizardStep(2);
+    if (r) setWizardStep(mealsLockedAtBlock ? 3 : 2);
   };
 
   const handleAddOnsNext = async () => {
     if (!wizardMeta?.reservationId) return;
-    if (!selectedMealPlanId) {
+    if (!mealsLockedAtBlock && !selectedMealPlanId) {
       dispatch(showSnackbar({ type: "error", message: t("Please select a meal plan") }));
       return;
     }
@@ -870,16 +965,19 @@ function CreateReservation() {
         quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
       }));
     setOnSumbitLoader(true);
-    const mealR = await completeMealPlan({
-      body: {
-        reservationId: wizardMeta.reservationId,
-        mealPlanId: selectedMealPlanId,
-      },
-      dispatch,
-    });
-    if (!mealR) {
-      setOnSumbitLoader(false);
-      return;
+    let mealR = null;
+    if (!mealsLockedAtBlock) {
+      mealR = await completeMealPlan({
+        body: {
+          reservationId: wizardMeta.reservationId,
+          mealPlanId: selectedMealPlanId,
+        },
+        dispatch,
+      });
+      if (!mealR) {
+        setOnSumbitLoader(false);
+        return;
+      }
     }
     const r = await completeAddOns({
       body: {
@@ -895,15 +993,14 @@ function CreateReservation() {
         typeof r.supplementTotal === "number"
           ? r.supplementTotal
           : computeSupplementFromRows();
-      const selectedPlan = hotelMealPlans.find((p) => p.mealPlanId === selectedMealPlanId);
       setWizardMeta((m) =>
         m
           ? {
               ...m,
               supplementTotal: sup,
-              meals: mealR.meals ?? m.meals,
-              totalTax: mealR.totalTax,
-              totalCost: mealR.totalCost ?? m.totalCost,
+              meals: mealR?.meals ?? m.meals,
+              totalTax: mealR?.totalTax ?? m.totalTax,
+              totalCost: mealR?.totalCost ?? m.totalCost,
             }
           : m
       );
@@ -1068,10 +1165,39 @@ function CreateReservation() {
         )}
         {showWizard && wizardStep === 2 && wizardMeta && (
           <Box sx={{ mb: 3 }}>
+            {mealsLockedAtBlock && (
+              <Box
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  bgcolor: "grey.50",
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  {t("Meals locked from room selection")}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t("Meal plans were selected per room/rate in step 1. You can now add supplements and continue.")}
+                </Typography>
+              </Box>
+            )}
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
               {t("Meal plan")}
             </Typography>
-            {hotelMealPlans.length === 0 ? (
+            {mealsLockedAtBlock ? (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  {mealPlanDisplayLabel(wizardMeta, t) || "—"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {t("Meals (excl. GST)")}: {formatInr(reservationMealPreTax(wizardMeta))} · {t("Meal GST")}:{" "}
+                  {formatInr(reservationMealGst(wizardMeta))}
+                </Typography>
+              </Box>
+            ) : hotelMealPlans.length === 0 ? (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {t("No meal plans configured for this hotel. Configure them under Hotel → Edit.")}
               </Typography>
@@ -1587,125 +1713,21 @@ function CreateReservation() {
             {isPriceAvailable && (
               <div className="room-block-section" style={{ width: "100%", padding: "0 15px", marginBottom: 20 }}>
                 <p className="title-header" style={{ marginBottom: 10 }}>
-                  {t("Room types & guests")}
+                  {t("Room & rate selection")}
                   <span style={{ fontWeight: 400, fontSize: "0.8rem", color: "#757575", marginLeft: 12 }}>
-                    {t("Rooms")}: {totalRoomLineUnits} &nbsp;|&nbsp; {t("Guests")}: {totalLinePersons}
+                    {t("Rooms")}: {totalCartRooms(cartLines)} &nbsp;|&nbsp; {t("Guests")}: {totalCartGuests(cartLines)}
                   </span>
                 </p>
-
-                {roomLineRows.map((row, idx) => (
-                  <div
-                    key={`room-line-${idx}`}
-                    className="room-line-row"
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 12,
-                      alignItems: "center",
-                      marginBottom: 16,
-                    }}
-                  >
-                    <FormControl variant="outlined" size="small" style={{ flex: "1 1 200px", minWidth: 200 }}>
-                      <InputLabel id={`room-line-lbl-${idx}`}>{t("Room type")}</InputLabel>
-                      <Select
-                        labelId={`room-line-lbl-${idx}`}
-                        label={t("Room type")}
-                        size="small"
-                        value={row.roomId || ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setRoomLineRows((lines) => {
-                            const next = [...lines];
-                            next[idx] = { ...next[idx], roomId: v };
-                            return next;
-                          });
-                          if (idx === 0) {
-                            setValue("roomId", v, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                            });
-                          }
-                        }}
-                      >
-                        {roomOptions.map((opt) => (
-                          <MenuItem key={opt.value} value={opt.value} disabled={!!opt.disabled}>
-                            {opt.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-
-                    <TextField
-                      label={t("Rooms")}
-                      variant="outlined"
-                      type="number"
-                      size="small"
-                      inputProps={{ min: 1, step: 1 }}
-                      value={row.qty}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setRoomLineRows((lines) => {
-                          const next = [...lines];
-                          next[idx] = { ...next[idx], qty: v };
-                          return next;
-                        });
-                      }}
-                      style={{ width: 100 }}
-                    />
-
-                    <TextField
-                      label={t("Guests")}
-                      variant="outlined"
-                      type="number"
-                      size="small"
-                      inputProps={{ min: 1, max: 25, step: 1 }}
-                      value={row.persons}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setRoomLineRows((lines) => {
-                          const next = [...lines];
-                          next[idx] = { ...next[idx], persons: v };
-                          return next;
-                        });
-                      }}
-                      style={{ width: 100 }}
-                    />
-
-                    {roomLineRows.length > 1 && (
-                      <IconButton
-                        type="button"
-                        size="small"
-                        aria-label={t("Remove room line")}
-                        onClick={() =>
-                          setRoomLineRows((lines) =>
-                            lines.length <= 1
-                              ? lines
-                              : lines.filter((_, i) => i !== idx)
-                          )
-                        }
-                        sx={{ color: "error.main" }}
-                      >
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </div>
-                ))}
-
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size="small"
-                  startIcon={<AddIcon />}
-                  onClick={() =>
-                    setRoomLineRows((lines) => [
-                      ...lines,
-                      { roomId: "", qty: "1", persons: "1" },
-                    ])
-                  }
-                  sx={{ textTransform: "none" }}
-                >
-                  {t("Add room type")}
-                </Button>
+                <CpRoomCartPanel
+                  availableRooms={availableRoomsRaw}
+                  mealPlans={blockMealPlans}
+                  cartLines={cartLines}
+                  onCartChange={setCartLines}
+                  totalGuests={Number(getValues("cdnintnoOfPersons")) || totalCartGuests(cartLines) || 1}
+                />
+                <Box sx={{ mt: 1.5 }}>
+                  <CpQuoteSummary summary={quoteSummary} loading={quoteLoading} error={quoteError} />
+                </Box>
               </div>
             )}
 

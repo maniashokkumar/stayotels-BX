@@ -1,0 +1,296 @@
+/* Enterprise reservation / booking list cards */
+
+.cp-res-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  background: #fff;
+}
+
+.cp-res-card--active {
+  border-color: #4374f4;
+  box-shadow: 0 0 0 2px rgba(67, 116, 244, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.cp-res-card--cancelled {
+  .cp-res-card__body,
+  .cp-res-card__footer {
+    opacity: 0.82;
+  }
+
+  .cp-res-card__name {
+    color: #64748b !important;
+  }
+}
+
+.cp-res-card--cancelled .cp-res-card__header {
+  background: #64748b;
+}
+
+.cp-res-card__action {
+  display: block;
+  text-align: left;
+  padding: 0;
+}
+
+.cp-res-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  background: #4374f4;
+  color: #fff;
+}
+
+.cp-res-card__id {
+  color: #fff !important;
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+}
+
+.cp-res-card__status {
+  height: 20px;
+  font-weight: 600;
+
+  .MuiChip-label {
+    font-weight: 600;
+    font-size: 0.65rem;
+    padding-left: 7px;
+    padding-right: 7px;
+    letter-spacing: 0.01em;
+  }
+}
+
+.cp-res-card__status--confirmed,
+.cp-res-card__status--completed,
+.cp-res-card__status--pending,
+.cp-res-card__status--blocked,
+.cp-res-card__status--partial {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+
+  .MuiChip-label {
+    color: #fff !important;
+    font-weight: 600 !important;
+  }
+}
+
+.cp-res-card__status--cancelled {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border: 1px solid #b91c1c !important;
+}
+
+.cp-res-card__body {
+  padding: 10px 12px 6px;
+}
+
+.cp-res-card__guest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cp-res-card__name {
+  flex: 1;
+  min-width: 0;
+  color: #0f172a;
+  font-size: 0.875rem !important;
+  line-height: 1.35 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-res-card__phone {
+  flex-shrink: 0;
+  max-width: 44%;
+  font-size: 0.75rem !important;
+  color: #64748b !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-res-card__meta {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.6875rem !important;
+  line-height: 1.35;
+  color: #94a3b8 !important;
+}
+
+.cp-res-card__stay {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.cp-res-card__stay-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cp-res-card__stay-col--end {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.cp-res-card__nights {
+  flex-shrink: 0;
+  padding: 0 8px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.cp-res-card__lbl {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.cp-res-card__val {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #1e293b;
+}
+
+.cp-res-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f8fafc;
+}
+
+.cp-res-card__detail {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: #64748b;
+
+  .cp-res-card__lbl {
+    display: inline;
+    font-size: inherit;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  .cp-res-card__val {
+    display: inline;
+    font-size: inherit;
+    font-weight: 500;
+    color: #475569;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.cp-res-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
+}
+
+.cp-res-card__footer-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.cp-res-card__payment-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6875rem !important;
+  line-height: 1.35;
+  font-weight: 500;
+  color: #64748b !important;
+}
+
+.cp-res-card__payment-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d97706;
+}
+
+.cp-res-card__amount-col {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.cp-res-card__total {
+  color: #0f172a;
+  font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.cp-res-card__paid-line {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.625rem !important;
+  line-height: 1.3;
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+
+.cp-res-card__paid-line--ok {
+  color: #15803d !important;
+}
+
+.cp-res-card__sub-line {
+  display: block;
+  font-size: 0.6875rem !important;
+  line-height: 1.3;
+  color: #94a3b8 !important;
+}
+
+/* Status chip on white drawer/detail panels (not on blue card header) */
+.cp-res-card__status--partial-inline {
+  height: 22px;
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a !important;
+
+  .MuiChip-label {
+    color: #92400e !important;
+    font-weight: 600 !important;
+    font-size: 0.68rem !important;
+  }
+}

@@ -118,6 +118,44 @@ function BookingHistory() {
     setDetailOpen(false);
   };
 
+  const handleBookingSaved = useCallback(async () => {
+    if (!selectedHotel) return;
+    const checkInDate =
+      checkInFilter && dayjs.isDayjs(checkInFilter) && checkInFilter.isValid()
+        ? checkInFilter.format('YYYY-MM-DD')
+        : '';
+    const { data, total: tTotal } = await fetchBookingHistoryPage({
+      hotelId: selectedHotel,
+      page,
+      perPage: rowsPerPage,
+      dispatch,
+      checkInDate,
+      statusFilter,
+      channelFilter,
+    });
+    setRows(data);
+    setTotal(tTotal);
+    if (selectedRow) {
+      const selKey = bookingRowKey(selectedRow);
+      const updated =
+        data.find((row) => bookingRowKey(row) === selKey) ||
+        (selectedRow.reservationId
+          ? data.find((row) => row.reservationId === selectedRow.reservationId)
+          : null) ||
+        (selectedRow.orderId ? data.find((row) => row.orderId === selectedRow.orderId) : null);
+      if (updated) setSelectedRow(updated);
+    }
+  }, [
+    selectedHotel,
+    checkInFilter,
+    page,
+    rowsPerPage,
+    dispatch,
+    statusFilter,
+    channelFilter,
+    selectedRow,
+  ]);
+
   return (
     <div className="booking-history-page page">
       <Breadcrumb
@@ -282,7 +320,12 @@ function BookingHistory() {
         )}
       </div>
 
-      <BookingDetailDrawer open={detailOpen} onClose={closeDetail} booking={selectedRow} />
+      <BookingDetailDrawer
+        open={detailOpen}
+        onClose={closeDetail}
+        booking={selectedRow}
+        onSaved={handleBookingSaved}
+      />
     </div>
   );
 }

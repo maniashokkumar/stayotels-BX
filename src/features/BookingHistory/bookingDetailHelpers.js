@@ -1,5 +1,10 @@
 import { normalizeMealsBlock } from '../Reservation/mealsBlockUtils';
-import { reservationRoomPreTax, nightsBetween } from '../Reservation/reservationDisplayUtils';
+import {
+  reservationRoomPreTax,
+  nightsBetween,
+  billableGuestCount,
+  extraPersonsForLine,
+} from '../Reservation/reservationDisplayUtils';
 
 function mealLabelFrom(line) {
   return line?.mealPlanName ?? line?.planName ?? line?.mealPlanCode ?? line?.planCode ?? null;
@@ -22,32 +27,19 @@ function distributeTotalGuests(totalGuests, roomCount, slotIndex) {
   return base + (slotIndex < remainder ? 1 : 0);
 }
 
-function sumPersistedLineGuests(persisted, lineCount) {
-  return persisted.slice(0, lineCount).reduce((s, l) => {
-    const q = Math.max(1, Number(l?.noOfRooms) || 1);
-    const g = Number(l?.noOfPersons) || 0;
-    return s + (g > 0 ? g * q : 0);
-  }, 0);
-}
-
 function resolveGuestsForSlot(rl, booking, lineCount, slotIndex) {
   const qty = Math.max(1, Number(rl?.noOfRooms) || 1);
   const lineGuests = Number(rl?.noOfPersons);
-  const headerTotal = Number(booking?.noOfPersons) || 0;
-  const persisted = Array.isArray(booking?.roomLines) ? booking.roomLines : [];
 
+  if (lineGuests > 0 && qty === 1) {
+    return lineGuests;
+  }
+
+  const headerTotal = billableGuestCount(booking);
   if (headerTotal > 0 && lineCount > 0) {
-    const persistedSum =
-      persisted.length >= lineCount ? sumPersistedLineGuests(persisted, lineCount) : 0;
-    const linesMatchHeader =
-      persistedSum > 0 && Math.abs(persistedSum - headerTotal) < 0.01;
-    if (linesMatchHeader && lineGuests > 0 && qty === 1) {
-      return lineGuests;
-    }
     return distributeTotalGuests(headerTotal, lineCount, slotIndex);
   }
 
-  if (lineGuests > 0 && qty === 1) return lineGuests;
   if (lineGuests > 0 && lineCount > 0) {
     return Math.max(1, Math.round(lineGuests / lineCount));
   }
@@ -83,7 +75,7 @@ function buildRow(booking, meals, rl, ml, idx, lineCount, nights) {
   const mealLabel = ml?.planName ?? mealLabelFrom(rl) ?? 'Room only';
   const mealPreTax = ml ? Number(ml.totalPreTax) || 0 : 0;
   const mealTax = ml ? Number(ml.totalTax) || 0 : 0;
-  const extraPersons = Number(rl?.extraPersons ?? rl?.extraGuests) || 0;
+  const extraPersons = extraPersonsForLine(rl, booking, guests);
 
   return {
     lineNumber: idx + 1,

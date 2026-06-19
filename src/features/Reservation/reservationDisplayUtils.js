@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import { normalizeMealsBlock } from './mealsBlockUtils';
+import { mealPlanCodeOption, MEAL_PLAN_CODE_OPTIONS } from '../Hotel/HotelMealPlans/mealPlanCodeOptions';
 
 /**
  * Shared display helpers for reservation / booking cards and detail drawers.
@@ -35,11 +36,21 @@ export function formatMoney(amount, currency = 'INR') {
   }
 }
 
+export function isTerminalBookingStatus(booking) {
+  if (!booking) return true;
+  const s = (booking?.status || '').toUpperCase();
+  return s === 'CANCELLED' || s === 'COMPLETED' || booking?.isDeleted === true;
+}
+
 export function statusLabel(booking, t) {
   const s = (booking?.status || '').toUpperCase();
   if (s === 'CANCELLED') return t('Cancelled');
   if (s === 'COMPLETED') return t('Completed');
   if (s === 'HOTEL_BLOCKED') return t('Blocked');
+  if (!isTerminalBookingStatus(booking)) {
+    const paySt = (booking?.cpPaymentStatus || '').toUpperCase();
+    if (paySt === 'PARTIALLY_PAID') return t('Partially paid');
+  }
   if (s === 'CONFIRMED' || booking?.isPaid) return t('Confirmed');
   if (s === 'PENDING') return t('Pending');
   if (booking?.isDeleted === true) return t('Removed');
@@ -61,10 +72,58 @@ export function cpSourceLabel(booking, t) {
   return src;
 }
 
-export function displayAdultGuestCount(booking) {
+/** Total billable guests (room lines, meals block, or header fallback). */
+export function billableGuestCount(booking) {
+  const persisted = Array.isArray(booking?.roomLines) ? booking.roomLines : [];
+  if (persisted.length > 0) {
+    const sum = persisted.reduce((s, l) => {
+      const q = Math.max(1, Number(l?.noOfRooms) || 1);
+      const g = Number(l?.noOfPersons) || 0;
+      return s + (g > 0 ? g * q : 0);
+    }, 0);
+    if (sum > 0) return sum;
+  }
+  const fromMeals = Number(booking?.meals?.guestCount);
+  if (fromMeals > 0) return fromMeals;
   const adults = Number(booking?.noOfAdults);
   if (adults > 0) return adults;
   return Number(booking?.noOfPersons) || 0;
+}
+
+/** Extra persons beyond the original search guest count (or explicit room-line field). */
+export function extraPersonCount(booking) {
+  const persisted = Array.isArray(booking?.roomLines) ? booking.roomLines : [];
+  const explicit = persisted.reduce((s, l) => s + (Number(l?.extraPersons) || 0), 0);
+  if (explicit > 0) return explicit;
+  const billable = billableGuestCount(booking);
+  const search = Number(booking?.noOfPersons) || 0;
+  if (billable > search && search > 0) return billable - search;
+  return 0;
+}
+
+export function extraPersonsForLine(line, booking, lineGuests) {
+  const explicit = Number(line?.extraPersons ?? line?.extraGuests);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const total = lineGuests ?? Number(line?.noOfPersons) ?? 0;
+  const search = Number(booking?.noOfPersons) || 0;
+  if (total > search && search > 0) return total - search;
+  return 0;
+}
+
+export function displayAdultGuestCount(booking) {
+  return billableGuestCount(booking);
+}
+
+/** e.g. "3 guests (2 + 1 extra)" for booking drawer header. */
+export function displayGuestSummary(booking, t) {
+  const total = billableGuestCount(booking);
+  if (!total) return `0 ${t('guests')}`;
+  const extra = extraPersonCount(booking);
+  if (extra > 0) {
+    const base = total - extra;
+    return `${total} ${t('guests')} (${base} + ${extra} ${t('extra')})`;
+  }
+  return `${total} ${t('guests')}`;
 }
 
 export function paymentStatusLine(booking, t) {
@@ -125,6 +184,52 @@ export function mealPlanDisplayLabel(booking, _t) {
   return meals.displayName || null;
 }
 
+/** Short formatted date for list cards (e.g. 30 May 2026). */
+export function reservationDateShort(ymd) {
+  if (!ymd) return '—';
+  const d = dayjs(ymd);
+  return d.isValid() ? d.format('D MMM YYYY') : ymd;
+}
+
+/** Payment ledger timestamp for drawers (e.g. 31 May 2026, 3:59 PM). */
+export function formatPaymentPaidAt(paidAt) {
+  if (!paidAt) return null;
+  const d = dayjs(paidAt);
+  return d.isValid() ? d.format('D MMM YYYY, h:mm A') : null;
+}
+
+function inferMealPlanCode(label) {
+  if (!label) return null;
+  const normalized = String(label).trim().toLowerCase();
+  const match = MEAL_PLAN_CODE_OPTIONS.find(
+    (opt) =>
+      opt.code.toLowerCase() === normalized ||
+      opt.defaultName.toLowerCase() === normalized ||
+      String(opt.labelKey).toLowerCase() === normalized
+  );
+  return match?.code ?? null;
+}
+
+/**
+ * Meal plan line for cards: "EP · Room only" (code + human label).
+ * EP = European Plan (room only) — industry-standard hotel abbreviation.
+ */
+export function mealPlanCardLabel(booking, t) {
+  const tags = bookingCardMealTags(booking);
+  if (!tags.length) return null;
+  return tags
+    .map((tag) => {
+      const code = tag.code || inferMealPlanCode(tag.label);
+      if (code) {
+        const opt = mealPlanCodeOption(code);
+        if (opt) return `${code} · ${t(opt.labelKey)}`;
+        return `${code} · ${tag.label}`;
+      }
+      return tag.label;
+    })
+    .join(', ');
+}
+
 /** Compact meal tags for booking list cards (deduped from meals.lines). */
 export function bookingCardMealTags(booking) {
   if (!booking) return [];
@@ -165,6 +270,7 @@ export function bookingStatusTone(booking) {
   if (s === 'CANCELLED' || booking?.isDeleted === true) return 'cancelled';
   if (s === 'COMPLETED') return 'completed';
   if (s === 'HOTEL_BLOCKED') return 'blocked';
+  if (isPartiallyPaidBooking(booking)) return 'partial';
   if (s === 'CONFIRMED' || booking?.isPaid) return 'confirmed';
   return 'pending';
 }
@@ -199,4 +305,64 @@ export function reservationGrandTotal(booking) {
   const gst = reservationGst(booking);
   const preTax = reservationPreTax(booking);
   return Math.round((preTax + gst) * 100) / 100;
+}
+
+export function reservationCollectedAmount(booking) {
+  if (booking?.amountPaid != null && Number.isFinite(Number(booking.amountPaid))) {
+    return Number(booking.amountPaid);
+  }
+  if (booking?.totalCollectedAmount != null && Number.isFinite(Number(booking.totalCollectedAmount))) {
+    return Number(booking.totalCollectedAmount);
+  }
+  if (Array.isArray(booking?.paymentLedger) && booking.paymentLedger.length > 0) {
+    return booking.paymentLedger.reduce((acc, p) => acc + (Number(p?.amount) || 0), 0);
+  }
+  if (booking?.isPaid) {
+    return reservationGrandTotal(booking);
+  }
+  return 0;
+}
+
+/** Amount paid for cancelled-booking lists (falls back to refund when API omits ledger fields). */
+export function cancellationAmountPaid(booking) {
+  const collected = reservationCollectedAmount(booking);
+  if (collected > 0.009) {
+    return collected;
+  }
+  const refund = Number(booking?.refundAmount);
+  if (Number.isFinite(refund) && refund > 0.009) {
+    return refund;
+  }
+  return 0;
+}
+
+export function reservationPendingAmount(booking) {
+  if (booking?.paymentPendingAmount != null && Number.isFinite(Number(booking.paymentPendingAmount))) {
+    return Math.max(0, Number(booking.paymentPendingAmount));
+  }
+  return Math.max(0, reservationGrandTotal(booking) - reservationCollectedAmount(booking));
+}
+
+/** Bookings that should not show active partial-payment UI (collect at check-in). */
+export function isPartiallyPaidBooking(booking) {
+  if (!booking || isTerminalBookingStatus(booking)) return false;
+  const st = (booking?.cpPaymentStatus || '').toUpperCase();
+  if (st === 'PARTIALLY_PAID') return true;
+  const pending = reservationPendingAmount(booking);
+  const collected = reservationCollectedAmount(booking);
+  return pending > 0.009 && collected > 0.009;
+}
+
+export function canCollectReservationPayment(booking) {
+  if (!booking?.reservationId) return false;
+  if (isTerminalBookingStatus(booking)) return false;
+  const st = (booking?.status || '').toUpperCase();
+  return st === 'HOTEL_BLOCKED' || st === 'CONFIRMED';
+}
+
+/** Rounded % of grand total collected (e.g. 50 for half paid). */
+export function reservationAdvancePercent(booking) {
+  const grand = reservationGrandTotal(booking);
+  if (grand <= 0.005) return 0;
+  return Math.round((reservationCollectedAmount(booking) / grand) * 100);
 }

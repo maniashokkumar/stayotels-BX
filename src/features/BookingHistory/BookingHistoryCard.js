@@ -1,153 +1,114 @@
 import React from 'react';
-import {
-  Box,
-  Typography,
-  Chip,
-  Card,
-  CardActionArea,
-  Stack,
-} from '@mui/material';
-import RestaurantOutlinedIcon from '@mui/icons-material/RestaurantOutlined';
+import { Box, Typography, Chip, Card, CardActionArea } from '@mui/material';
 import {
   guestName,
-  formatMoney,
   statusLabel,
   channelLabel,
   cpSourceLabel,
-  bookingCardMealTags,
   bookingStatusTone,
-  reservationGrandTotal,
   reservationMealPreTax,
+  isPartiallyPaidBooking,
+  reservationDateShort,
+  mealPlanCardLabel,
+  nightsBetween,
 } from '../Reservation/reservationDisplayUtils';
+import ReservationCardFooter, {
+  partialPaymentStatusChipLabel,
+} from '../Reservation/PartialPaymentCardFooter';
 
 function phoneDisplay(row) {
   const p = row?.customer?.phoneNumber || row?.guestPhone || row?.phoneNumber;
   return p && String(p).trim() ? String(p).trim() : '';
 }
 
-function MealPlanTags({ tags, t }) {
-  if (!tags?.length) return null;
-  return (
-    <Stack
-      direction="row"
-      flexWrap="wrap"
-      useFlexGap
-      spacing={0.5}
-      className="booking-history-card-item__meals"
-      aria-label={t('Meal plans')}
-    >
-      {tags.map((tag) => (
-        <Chip
-          key={tag.key}
-          size="small"
-          icon={tag.paid ? <RestaurantOutlinedIcon /> : undefined}
-          label={tag.label}
-          className={`booking-history-card-item__meal-chip${
-            tag.paid ? ' booking-history-card-item__meal-chip--paid' : ''
-          }`}
-        />
-      ))}
-    </Stack>
-  );
-}
-
 export default function BookingHistoryCard({ row, isActive, onOpen, t }) {
   const statusText = statusLabel(row, t);
   const tone = bookingStatusTone(row);
   const oid = row.orderId || row.reservationId || '—';
-  const mealTags = bookingCardMealTags(row);
   const mealPreTax = reservationMealPreTax(row);
-  const grandTotal = reservationGrandTotal(row);
-  const channel = channelLabel(row, t);
+  const partialPay = isPartiallyPaidBooking(row);
+  const chipLabel = partialPay ? partialPaymentStatusChipLabel(row, t, statusText) : statusText;
   const cpSource = cpSourceLabel(row, t);
+  const channel = channelLabel(row, t);
   const metaParts = [channel, cpSource].filter(Boolean);
+  const planLabel = mealPlanCardLabel(row, t);
+  const statusClass = partialPay ? 'partial' : tone;
+  const nights = nightsBetween(row.checkIn, row.checkOut);
+  const nightsLabel = nights === '—' ? null : `${nights} ${t('N')}`;
 
   return (
     <Card
       elevation={0}
-      className={`booking-history-card-item booking-history-card-item--${tone}${
-        isActive ? ' booking-history-card-item--active' : ''
-      }`}
+      className={`cp-res-card cp-res-card--${tone}${isActive ? ' cp-res-card--active' : ''}`}
       sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}
     >
       <CardActionArea
         onClick={() => onOpen(row)}
-        className="booking-history-card-item__action"
+        className="cp-res-card__action"
         aria-label={`${t('Booking')} ${oid}, ${guestName(row)}`}
         aria-current={isActive ? 'true' : undefined}
         sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
       >
-        <Box className="booking-history-card-item__top">
-          <Typography className="booking-history-card-item__id" variant="body2" fontWeight={700}>
+        <Box className="cp-res-card__header">
+          <Typography className="cp-res-card__id" variant="body2" fontWeight={700}>
             #{oid}
           </Typography>
           <Chip
             size="small"
-            label={statusText}
-            className={`booking-history-card-item__status booking-history-card-item__status--${tone}`}
+            label={chipLabel}
+            className={`cp-res-card__status cp-res-card__status--${statusClass}`}
           />
         </Box>
 
-        <Box className="booking-history-card-item__name-row">
-          <Typography
-            className="booking-history-card-item__name"
-            variant="subtitle1"
-            fontWeight={600}
-            noWrap
-            title={guestName(row)}
-          >
-            {guestName(row)}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            className="booking-history-card-item__phone"
-            noWrap
-            title={phoneDisplay(row) || undefined}
-          >
-            {phoneDisplay(row) || '—'}
-          </Typography>
-        </Box>
-
-        {metaParts.length > 0 ? (
-          <Typography variant="caption" color="text.secondary" className="booking-history-card-item__meta">
-            {metaParts.join(' · ')}
-          </Typography>
-        ) : null}
-
-        <MealPlanTags tags={mealTags} t={t} />
-
-        <Box className="booking-history-card-item__dates">
-          <Box className="booking-history-card-item__date-block">
-            <Typography variant="caption" color="text.secondary" component="span" display="block">
-              {t('Check-in')}
+        <Box className="cp-res-card__body">
+          <Box className="cp-res-card__guest-row">
+            <Typography className="cp-res-card__name" variant="body2" fontWeight={600} title={guestName(row)}>
+              {guestName(row)}
             </Typography>
-            <Typography variant="caption" className="booking-history-card-item__date-value">
-              {row.checkIn || '—'}
+            <Typography className="cp-res-card__phone" variant="caption" title={phoneDisplay(row) || undefined}>
+              {phoneDisplay(row) || '—'}
             </Typography>
           </Box>
-          <Box className="booking-history-card-item__date-block booking-history-card-item__date-block--end">
-            <Typography variant="caption" color="text.secondary" component="span" display="block">
-              {t('Checkout')}
+
+          {metaParts.length > 0 ? (
+            <Typography variant="caption" className="cp-res-card__meta">
+              {metaParts.join(' · ')}
             </Typography>
-            <Typography variant="caption" className="booking-history-card-item__date-value">
-              {row.checkOut || '—'}
-            </Typography>
+          ) : null}
+
+          <Box className="cp-res-card__stay">
+            <Box className="cp-res-card__stay-col">
+              <span className="cp-res-card__lbl">{t('Check-in')}</span>
+              <span className="cp-res-card__val">{reservationDateShort(row.checkIn)}</span>
+            </Box>
+            {nightsLabel ? (
+              <span className="cp-res-card__nights" aria-label={`${nights} ${t('Nights')}`}>
+                {nightsLabel}
+              </span>
+            ) : (
+              <span className="cp-res-card__nights" aria-hidden="true">
+                ·
+              </span>
+            )}
+            <Box className="cp-res-card__stay-col cp-res-card__stay-col--end">
+              <span className="cp-res-card__lbl">{t('Check-out')}</span>
+              <span className="cp-res-card__val">{reservationDateShort(row.checkOut)}</span>
+            </Box>
           </Box>
+
+          {planLabel ? (
+            <Box className="cp-res-card__details">
+              <span className="cp-res-card__detail">
+                <span className="cp-res-card__lbl">{t('Plan')}</span>
+                <span className="cp-res-card__val" title={planLabel}>
+                  {planLabel}
+                </span>
+              </span>
+            </Box>
+          ) : null}
         </Box>
 
-        <Box className="booking-history-card-item__bottom">
-          <Box className="booking-history-card-item__pricing">
-            {mealPreTax > 0.01 ? (
-              <Typography variant="caption" color="text.secondary" className="booking-history-card-item__meals-amt">
-                {t('Meals')} {formatMoney(mealPreTax)}
-              </Typography>
-            ) : null}
-            <Typography variant="body1" fontWeight={700} className="booking-history-card-item__amount">
-              {formatMoney(grandTotal)}
-            </Typography>
-          </Box>
-        </Box>
+        <ReservationCardFooter booking={row} t={t} mealPreTax={mealPreTax} />
       </CardActionArea>
     </Card>
   );

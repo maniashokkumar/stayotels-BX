@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Drawer, useMediaQuery, useTheme } from '@mui/material';
 import BookingDetailContent from './BookingDetailContent';
 
-export default function BookingDetailDrawer({ open, onClose, booking }) {
+export default function BookingDetailDrawer({ open, onClose, booking, onSaved }) {
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down('sm'));
   const closeBtnRef = useRef(null);
@@ -49,6 +49,7 @@ export default function BookingDetailDrawer({ open, onClose, booking }) {
         onClose={onClose}
         titleId={titleId}
         closeBtnRef={closeBtnRef}
+        onSaved={onSaved}
       />
     </Drawer>
   );

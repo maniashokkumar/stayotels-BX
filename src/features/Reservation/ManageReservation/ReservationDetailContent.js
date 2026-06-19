@@ -13,6 +13,8 @@ import {
   Tooltip,
   FormControlLabel,
   Checkbox,
+  Alert,
+  Chip,
 } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
@@ -46,11 +48,15 @@ import {
   statusLabel,
   channelLabel,
   cpSourceLabel,
-  displayAdultGuestCount,
+  displayGuestSummary,
+  billableGuestCount,
   paymentStatusLine,
   nightsBetween,
+  isPartiallyPaidBooking,
+  formatPaymentPaidAt,
 } from '../reservationDisplayUtils';
 import { DetailRow, SectionCard } from '../ReservationDrawerShared';
+import PaymentLedgerRows from '../PaymentLedgerRows';
 import GstSummary from '../../../components/GstSummary/GstSummary';
 import MealReservationSection from '../MealReservationSection';
 import { gstSummaryMealProps } from '../mealsBlockUtils';
@@ -200,7 +206,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
       const p = Number(form.cdnintnoOfPersons);
       if (Number.isFinite(p) && p > 0) return p;
     }
-    return displayAdultGuestCount(reservation) || Number(reservation?.noOfPersons) || 1;
+    return billableGuestCount(reservation) || Number(reservation?.noOfPersons) || 1;
   }, [
     editMode,
     form.cdnintnoOfPersons,
@@ -567,6 +573,7 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
     reservation?.paymentPendingAmount != null && Number.isFinite(Number(reservation.paymentPendingAmount))
       ? Number(reservation.paymentPendingAmount)
       : Math.max(0, payableTotal - collectedTotal);
+  const partialPay = reservation ? isPartiallyPaidBooking(reservation) : false;
   const allowPaymentCollect = (() => {
     if (!reservation) return false;
     const st = (reservation.status || '').toUpperCase();
@@ -699,12 +706,40 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
               </Stack>
             </Box>
 
+            {partialPay ? (
+              <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+                  {t('Incomplete payment — balance due at check-in')}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 0.75 }}>
+                  {t('Guest paid')} <strong>{formatMoney(collectedTotal)}</strong> {t('of')}{' '}
+                  <strong>{formatMoney(payableTotal)}</strong>. {t('Collect remaining')}{' '}
+                  <strong>{formatMoney(dueAmount)}</strong> {t('before or at check-in')}.
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {reservation.orderId ? (
+                    <Chip size="small" label={`${t('Booking')} #${reservation.orderId}`} variant="outlined" />
+                  ) : null}
+                  {(reservation.salesChannel || '').toUpperCase() === 'WEBSITE' ? (
+                    <Chip size="small" label={t('Website booking')} color="info" variant="outlined" />
+                  ) : null}
+                  {reservation.razorpayPaymentId ? (
+                    <Chip
+                      size="small"
+                      label={`Razorpay: ${reservation.razorpayPaymentId}`}
+                      variant="outlined"
+                      sx={{ maxWidth: '100%' }}
+                    />
+                  ) : null}
+                </Stack>
+              </Alert>
+            ) : null}
+
             <SectionCard title={t('BOOKING DETAILS')}>
               {!editMode ? (
                 <>
                   <Typography variant="body2" fontWeight={600} gutterBottom>
-                    {reservation.noOfRooms || 0} {t('Room(s)')} | {displayAdultGuestCount(reservation)}{' '}
-                    {t('Adults')}
+                    {reservation.noOfRooms || 0} {t('Room(s)')} | {displayGuestSummary(reservation, t)}
                     {reservation.noOfChildren != null ? ` + ${reservation.noOfChildren} ${t('Children')}` : ''}
                   </Typography>
                   {/* Per-room-type breakdown from roomLines (new bookings) */}
@@ -1080,7 +1115,26 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
               </Stack>
             </SectionCard>
 
-            <SectionCard title={t('PAYMENT')}>
+            <SectionCard
+              title={t('PAYMENT')}
+              sx={
+                partialPay
+                  ? {
+                      border: '1px solid',
+                      borderColor: 'warning.main',
+                      bgcolor: 'warning.50',
+                    }
+                  : undefined
+              }
+            >
+              {partialPay ? (
+                <Chip
+                  size="small"
+                  color="warning"
+                  label={t('Partially paid — action required')}
+                  sx={{ mb: 1.25, fontWeight: 700 }}
+                />
+              ) : null}
               <Typography variant="body2" sx={{ mb: 0.5 }}>
                 <Box component="span" color="text.secondary">
                   {t('Payment status')}:{' '}
@@ -1091,7 +1145,17 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
               </Typography>
               <DetailRow label={t('Total (room + supplements)')} value={formatMoney(payableTotal)} />
               <DetailRow label={t('Collected')} value={formatMoney(collectedTotal)} />
-              <DetailRow label={t('Amount due')} value={formatMoney(dueAmount)} />
+              <DetailRow
+                label={t('Amount due')}
+                value={formatMoney(dueAmount)}
+                valueSx={partialPay ? { color: 'warning.dark', fontWeight: 700 } : undefined}
+              />
+              {reservation.razorpayOrderId ? (
+                <DetailRow label={t('Razorpay order ID')} value={reservation.razorpayOrderId} />
+              ) : null}
+              {reservation.razorpayPaymentId ? (
+                <DetailRow label={t('Razorpay payment ID')} value={reservation.razorpayPaymentId} />
+              ) : null}
               {Number(reservation.refundAmount) > 0 &&
               reservation.refundStatus &&
               (reservation?.status || '').toUpperCase() !== 'CANCELLED' ? (
@@ -1133,19 +1197,10 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                   </Stack>
                 </Box>
               ) : null}
-              {Array.isArray(reservation.paymentLedger) && reservation.paymentLedger.length > 0 ? (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    {t('Payment history')}
-                  </Typography>
-                  {reservation.paymentLedger.map((row, i) => (
-                    <Typography key={`${row.paidAt || i}-${i}`} variant="caption" sx={{ display: 'block', mt: 0.35 }}>
-                      {row.method || '—'} · {formatMoney(row.amount)}
-                      {row.reference ? ` · ${row.reference}` : ''}
-                    </Typography>
-                  ))}
-                </Box>
+              {reservation.lastUpdatedOn ? (
+                <DetailRow label={t('Last updated')} value={formatPaymentPaidAt(reservation.lastUpdatedOn)} />
               ) : null}
+              <PaymentLedgerRows ledger={reservation.paymentLedger} t={t} />
               {allowPaymentCollect ? (
                 <Box sx={{ mt: 1.5 }}>
                   {!collectMode ? (
@@ -1237,7 +1292,6 @@ export default function ReservationDetailContent({ reservation, showClose, onClo
                   {reservation.refundAmount != null && Number(reservation.refundAmount) > 0 ? (
                     <DetailRow label={t('Refund amount')} value={formatMoney(reservation.refundAmount)} />
                   ) : null}
-                  <DetailRow label={t('Razorpay payment ID')} value={reservation.razorpayPaymentId} />
                 </>
               ) : null}
               {reservation?.previousTotalCost != null || reservation?.revisedTotalCost != null ? (

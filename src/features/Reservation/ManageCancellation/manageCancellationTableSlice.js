@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { axiosPrService } from '../../../axios/axiosInstance';
 import { showSnackbar } from '../../../redux/reducer/appSlice';
+import { cancellationAmountPaid, reservationCollectedAmount } from '../reservationDisplayUtils';
 
 export const fetchCancellationList = createAsyncThunk('/fetchManageCancellationList', async ({ data, params }, { dispatch }) => {
     let result = { total: 0, data: [] };
@@ -19,6 +20,7 @@ export const fetchCancellationList = createAsyncThunk('/fetchManageCancellationL
                             minute: '2-digit'
                         }).replace(',', '');
                     }
+                    item.amountPaid = cancellationAmountPaid(item);
                 });
                 result = { total: res.data.length || 0, data: res.data };
                 return result;

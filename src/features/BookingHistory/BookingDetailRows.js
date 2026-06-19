@@ -57,13 +57,14 @@ export function RoomLineCard({ line, roomIndex, t }) {
   const extra = Number(line.extraPersons) || 0;
 
   const guestValue = (() => {
-    const persons = formatPersonCount(guests, t);
-    if (!persons) return null;
+    if (!Number.isFinite(Number(guests)) || Number(guests) < 1) return null;
     if (extra > 0) {
+      const base = Math.max(1, Number(guests) - Number(extra));
+      const baseLabel = formatPersonCount(base, t);
       const extraLabel = formatPersonCount(extra, t) || `${extra}`;
-      return `${persons} (+${extraLabel} ${t('extra')})`;
+      return `${baseLabel} (+${extraLabel} ${t('extra')})`;
     }
-    return persons;
+    return formatPersonCount(guests, t);
   })();
 
   const mealsTotal = (line.mealPreTax ?? 0) + (line.mealTax ?? 0);
